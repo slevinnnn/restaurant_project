@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head><title>Cliente</title></head>
+<body>
+  <h1>Bienvenido</h1>
+  <p>Tu número en la fila es: <strong>{{ numero }}</strong></p>
+  <p id="estado">Esperando tu turno...</p>
+
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <script>
+    const id = {{ numero }};
+    const socket = io();
+
+    socket.on("connect", () => {
+      socket.emit("registrar_cliente", { id: id });
+    });
+
+    socket.on("es_tu_turno", (data) => {
+      document.getElementById("estado").innerText = "¡Es tu turno! Ve a la mesa " + data.mesa;
+    });
+  </script>
+</body>
+</html>

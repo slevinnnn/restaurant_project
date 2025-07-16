@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Trabajador</title>
+  <style>
+    .mesa {
+      border: 1px solid gray;
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 10px;
+      width: 300px;
+    }
+    .ocupada { background-color: #fdd; }
+    .libre { background-color: #dfd; }
+  </style>
+</head>
+<body>
+  <h1>Panel de trabajador</h1>
+
+  <h2>Clientes en espera</h2>
+  <ul>
+    {% for c in clientes %}
+      <li>Cliente #{{ c.id }} (desde {{ c.joined_at }})</li>
+    {% endfor %}
+  </ul>
+
+  <h2>Mesas</h2>
+  {% for m in mesas %}
+    <div class="mesa {% if m.is_occupied %}ocupada{% else %}libre{% endif %}" id="mesa-{{ m.id }}">
+      <p><strong>Mesa #{{ m.id }}</strong></p>
+      <p>
+        Estado: <strong>{% if m.is_occupied %}Ocupada{% else %}Libre{% endif %}</strong><br>
+        {% if m.is_occupied %}
+          Cliente asignado: #{{ m.cliente.id if m.cliente else 'Desconocido' }}<br>
+          Tiempo en uso: <span id="timer-{{ m.id }}">calculando...</span>
+        {% endif %}
+      </p>
+      <button class="btn-accion" data-mesa-id="{{ m.id }}" data-ocupada="{{ 'true' if m.is_occupied else 'false' }}">
+        {% if m.is_occupied %}Desocupar mesa{% elif not clientes %}Ocupar mesa manualmente{% endif %}
+      </button>
+    </div>
+  {% endfor %}
+
+  <h2>Estadísticas</h2>
+  <p id="promedio">Calculando...</p>
+
+  <script>
+    function accionMesa(mesaId, ocupada) {
+      if (ocupada) {
+        fetch(`/liberar_mesa/${mesaId}`, { method: 'POST' })
+          .then(res => res.json())
+          .then(data => {
+            alert(data.mensaje);
+            location.reload();
+          });
+      } else {
+        fetch(`/ocupar_mesa/${mesaId}`, { method: 'POST' })
+          .then(res => res.json())
+          .then(data => {
+            alert(data.mensaje);
+            location.reload();
+          });
+      }
+    }
+
+    document.querySelectorAll('.btn-accion').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.mesaId;
+        const ocupada = btn.dataset.ocupada === 'true';
+        accionMesa(id, ocupada);
+      });
+    });
+
+    function actualizarEstadisticas() {
+      fetch('/estadisticas')
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById("promedio").innerText =
+            "Promedio tiempo de uso de mesas: " + Math.round(data.promedio_tiempo_uso) + " segundos";
+        });
+    }
+
+    function iniciarTemporizador(mesaId, startTimeStr) {
+      const startTime = new Date(startTimeStr);
+      function actualizar() {
+        const ahora = new Date();
+        const segundos = Math.floor((ahora - startTime) / 1000);
+        document.getElementById(`timer-${mesaId}`).innerText = `${segundos} segundos`;
+      }
+      setInterval(actualizar, 1000);
+      actualizar();
+    }
+
+    {% for m in mesas %}
+      {% if m.is_occupied and m.start_time %}
+        iniciarTemporizador({{ m.id }}, "{{ m.start_time.isoformat() }}");
+      {% endif %}
+    {% endfor %}
+
+    setInterval(actualizarEstadisticas, 5000);
+    actualizarEstadisticas();
+  </script>
+</body>
+</html>
+
+
