@@ -18,7 +18,10 @@
   <h1>Panel de trabajador</h1>
 
   <h2>Clientes en espera</h2>
-  <ul>
+  <ul id="clientes-lista">
+    {% if not clientes %}
+      <li>No hay clientes en espera.</li>
+    {% endif %}
     {% for c in clientes %}
 
       <li>Cliente #{{ c.id }} (desde {{ c.joined_at.strftime('%Y-%m-%d %H:%M:%S') }})</li>
@@ -45,7 +48,27 @@
   <h2>Estadísticas</h2>
   <p id="promedio">Calculando...</p>
 
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script>
+
+    const socket = io();
+
+    socket.on('actualizar_cola', () => {
+      // Llamamos a la API para obtener la lista actualizada de clientes
+      fetch('/clientes')
+        .then(res => res.json())
+        .then(data => {
+          const ul = document.querySelector('#clientes-lista');
+          ul.innerHTML = '';
+          data.forEach(c => {
+            const li = document.createElement('li');
+            li.textContent = `Cliente #${c.id} (desde ${c.joined_at})`;
+            ul.appendChild(li);
+          });
+        });
+    });
+
+
     function accionMesa(mesaId, ocupada) {
       if (ocupada) {
         fetch(`/liberar_mesa/${mesaId}`, { method: 'POST' })
@@ -111,6 +134,8 @@
     setInterval(actualizarEstadisticas, 5000);
     actualizarEstadisticas();
   </script>
+  
+
 </body>
 </html>
 

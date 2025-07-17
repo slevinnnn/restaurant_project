@@ -26,6 +26,7 @@ def cliente():
     nuevo = Cliente()
     db.session.add(nuevo)
     db.session.commit()
+    socketio.emit('actualizar_cola')
     return render_template('client.html', numero=nuevo.id)
 
 @app.route('/trabajador')
@@ -92,6 +93,20 @@ def registrar_cliente(data):
         cliente.sid = sid
         db.session.commit()
         join_room(sid)
+        socketio.emit('nuevo_cliente', {
+            'cliente_id': cliente.id,
+            'joined_at': cliente.joined_at.strftime('%Y-%m-%d %H:%M:%S')
+        })
+
+@app.route('/clientes')
+def obtener_clientes():
+    clientes = Cliente.query.filter_by(assigned_table=None).order_by(Cliente.joined_at).all()
+    return jsonify([
+        {
+            'id': c.id,
+            'joined_at': c.joined_at.strftime('%Y-%m-%d %H:%M:%S')
+        } for c in clientes
+    ])
 
 
 if __name__ == "__main__":
