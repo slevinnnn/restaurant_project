@@ -20,7 +20,8 @@
   <h2>Clientes en espera</h2>
   <ul>
     {% for c in clientes %}
-      <li>Cliente #{{ c.id }} (desde {{ c.joined_at }})</li>
+
+      <li>Cliente #{{ c.id }} (desde {{ c.joined_at.strftime('%Y-%m-%d %H:%M:%S') }})</li>
     {% endfor %}
   </ul>
 

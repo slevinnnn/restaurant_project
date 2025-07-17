@@ -37,7 +37,7 @@ def trabajador():
 def liberar_mesa(mesa_id):
     mesa = Mesa.query.get(mesa_id)
     if mesa and mesa.is_occupied:
-        tiempo_usado = (datetime.utcnow() - mesa.start_time).total_seconds() if mesa.start_time else 0
+        tiempo_usado = (datetime.now() - mesa.start_time).total_seconds() if mesa.start_time else 0
         mesa.is_occupied = False
         mesa.start_time = None
         mesa.cliente_id = None
@@ -47,7 +47,7 @@ def liberar_mesa(mesa_id):
         if siguiente:
             siguiente.assigned_table = mesa.id
             mesa.is_occupied = True
-            mesa.start_time = datetime.utcnow()
+            mesa.start_time = datetime.now()
             mesa.cliente_id = siguiente.id
             db.session.commit()
             if siguiente.sid:
@@ -63,7 +63,7 @@ def ocupar_mesa(mesa_id):
     mesa = Mesa.query.get(mesa_id)
     if mesa and not mesa.is_occupied:
         mesa.is_occupied = True
-        mesa.start_time = datetime.utcnow()
+        mesa.start_time = datetime.now()
         mesa.cliente_id = None
         db.session.commit()
         return jsonify({"mensaje": "Mesa marcada como ocupada manualmente."})
@@ -75,7 +75,7 @@ def estadisticas():
     tiempos = []
     for mesa in mesas:
         if mesa.start_time and mesa.is_occupied:
-            tiempos.append((datetime.utcnow() - mesa.start_time).total_seconds())
+            tiempos.append((datetime.now() - mesa.start_time).total_seconds())
     promedio = statistics.mean(tiempos) if tiempos else 0
     return jsonify({"promedio_tiempo_uso": promedio})
 
