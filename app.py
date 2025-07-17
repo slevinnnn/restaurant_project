@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, emit, join_room
-from models import db, Cliente, Mesa
+from models import UsoMesa, db, Cliente, Mesa
 from datetime import datetime
 import statistics
 from flask_migrate import Migrate
@@ -10,6 +10,7 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite3'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
+migrate = Migrate(app, db)
 
 socketio = SocketIO(app)
 
@@ -38,6 +39,8 @@ def liberar_mesa(mesa_id):
     mesa = Mesa.query.get(mesa_id)
     if mesa and mesa.is_occupied:
         tiempo_usado = (datetime.now() - mesa.start_time).total_seconds() if mesa.start_time else 0
+        uso = UsoMesa(mesa_id=mesa.id, duracion=tiempo_usado)#guarda el tiempo de uso de la mesa para calcular promedio
+        db.session.add(uso)
         mesa.is_occupied = False
         mesa.start_time = None
         mesa.cliente_id = None
@@ -71,12 +74,13 @@ def ocupar_mesa(mesa_id):
 
 @app.route('/estadisticas')
 def estadisticas():
-    mesas = Mesa.query.all()
-    tiempos = []
-    for mesa in mesas:
-        if mesa.start_time and mesa.is_occupied:
-            tiempos.append((datetime.now() - mesa.start_time).total_seconds())
-    promedio = statistics.mean(tiempos) if tiempos else 0
+    usos = UsoMesa.query.all()  # Trae todos los registros históricos
+
+    if not usos:
+        promedio = 0
+    else:
+        total_segundos = sum(uso.duracion for uso in usos)
+        promedio = total_segundos / len(usos)
     return jsonify({"promedio_tiempo_uso": promedio})
 
 @socketio.on("registrar_cliente")

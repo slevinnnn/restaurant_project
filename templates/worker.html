@@ -76,8 +76,18 @@
       fetch('/estadisticas')
         .then(res => res.json())
         .then(data => {
-          document.getElementById("promedio").innerText =
-            "Promedio tiempo de uso de mesas: " + Math.round(data.promedio_tiempo_uso) + " segundos";
+      const totalSegundos = Math.round(data.promedio_tiempo_uso);
+
+      // Convertir a minutos y segundos
+      const minutos = Math.floor(totalSegundos / 60);
+      const segundos = totalSegundos % 60;
+
+      let texto = "Promedio tiempo de uso de mesas: ";
+      if (minutos > 0) {
+        texto += `${minutos} minuto${minutos > 1 ? 's' : ''} `;
+      }
+      texto += `${segundos} segundo${segundos !== 1 ? 's' : ''}`;
+      document.getElementById("promedio").innerText = texto;
         });
     }
 
