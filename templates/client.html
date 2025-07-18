@@ -4,6 +4,7 @@
 <body>
   <h1>Bienvenido</h1>
   <p>Tu número en la fila es: <strong>{{ numero }}</strong></p>
+  <p>Actualmente atendiendo al número: <strong id="atendiendo"></strong></p>
   <p id="estado">Esperando tu turno...</p>
 
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
@@ -17,6 +18,9 @@
 
     socket.on("es_tu_turno", (data) => {
       document.getElementById("estado").innerText = "¡Es tu turno! Ve a la mesa " + data.mesa;
+    });
+    socket.on("actualizar_posicion",(data)=>{
+      document.getElementById("atendiendo").innerText = Number(data.primero)-1;
     });
   </script>
 </body>

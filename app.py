@@ -27,6 +27,7 @@ def cliente():
     db.session.add(nuevo)
     db.session.commit()
     socketio.emit('actualizar_cola')
+    enviar_estado_cola()  # Actualiza el estado de la cola para todos los clientes
     return render_template('client.html', numero=nuevo.id)
 
 @app.route('/trabajador')
@@ -34,6 +35,23 @@ def trabajador():
     clientes = Cliente.query.filter_by(assigned_table=None).order_by(Cliente.joined_at).all()
     mesas = Mesa.query.all()
     return render_template('worker.html', clientes=clientes, mesas=mesas)
+
+
+def enviar_estado_cola():
+    clientes = Cliente.query.filter_by(assigned_table=None).order_by(Cliente.joined_at).all()
+    if clientes:
+        primero = clientes[0].id
+    else:
+        primero = None
+    # Para cada cliente en cola, emitimos a su SID la posición y el primero
+    for idx, cliente in enumerate(clientes):
+        if cliente.sid:
+            socketio.emit('actualizar_posicion', {
+                'primero': primero,
+                'posicion': idx + 1,  # 1-based index
+                'total': len(clientes)
+            }, to=cliente.sid)
+
 
 @app.route('/liberar_mesa/<int:mesa_id>', methods=['POST'])
 def liberar_mesa(mesa_id):
@@ -58,8 +76,9 @@ def liberar_mesa(mesa_id):
                 socketio.emit("es_tu_turno", {
                     "mesa": mesa.id
                 }, to=siguiente.sid)
-
+        enviar_estado_cola()  # Actualiza el estado de la cola para todos los clientes
         return jsonify({"mensaje": "Mesa liberada", "duracion": tiempo_usado})
+    enviar_estado_cola()  # Actualiza el estado de la cola para todos los clientes
     return jsonify({"mensaje": "Mesa no ocupada o no encontrada"})
 
 @app.route('/ocupar_mesa/<int:mesa_id>', methods=['POST'])
@@ -97,6 +116,7 @@ def registrar_cliente(data):
             'cliente_id': cliente.id,
             'joined_at': cliente.joined_at.strftime('%Y-%m-%d %H:%M:%S')
         })
+        enviar_estado_cola()
 
 @app.route('/clientes')
 def obtener_clientes():
