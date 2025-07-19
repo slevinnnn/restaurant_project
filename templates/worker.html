@@ -95,6 +95,23 @@
       });
     });
 
+    horas_minutos_segundos = (totalSegundos) => {
+      // Convertir a minutos y segundos
+      const minutos = Math.floor(totalSegundos / 60);
+      const segundos = totalSegundos % 60;
+      const horas = Math.floor(minutos / 60);
+
+      if (horas > 0) {
+        return `${horas} hora${horas > 1 ? 's' : ''} ${minutos % 60} minuto${minutos > 1 ? 's' : ''}`;
+      }
+      else if (minutos > 0) {
+        return `${minutos} minuto${minutos > 1 ? 's' : ''} `;
+      }
+      else if(horas==0&&minutos==0){
+        return `${totalSegundos} segundos`;
+      }
+      return '';}
+
     function actualizarEstadisticas() {
       fetch('/estadisticas')
         .then(res => res.json())
@@ -104,14 +121,22 @@
       // Convertir a minutos y segundos
       const minutos = Math.floor(totalSegundos / 60);
       const segundos = totalSegundos % 60;
+      const horas = Math.floor(minutos / 60);
 
       let texto = "Promedio tiempo de uso de mesas: ";
-      if (minutos > 0) {
+      if (horas > 0) {
+        texto += `${horas} hora${horas > 1 ? 's' : ''} ${minutos % 60} minuto${minutos > 1 ? 's' : ''}`;
+      }
+      else if (minutos > 0) {
         texto += `${minutos} minuto${minutos > 1 ? 's' : ''} `;
       }
-      texto += `${segundos} segundo${segundos !== 1 ? 's' : ''}`;
+      else if(horas==0&&minutos==0){
+        document.getElementById("promedio").innerText =segundos + " segundos";
+      }
+  
       document.getElementById("promedio").innerText = texto;
         });
+
     }
 
     function iniciarTemporizador(mesaId, startTimeStr) {
@@ -119,7 +144,8 @@
       function actualizar() {
         const ahora = new Date();
         const segundos = Math.floor((ahora - startTime) / 1000);
-        document.getElementById(`timer-${mesaId}`).innerText = `${segundos} segundos`;
+
+        document.getElementById(`timer-${mesaId}`).innerText = `${horas_minutos_segundos(segundos)}`;
       }
       setInterval(actualizar, 1000);
       actualizar();
