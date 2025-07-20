@@ -1,0 +1,35 @@
+@import "tailwindcss";
+@import "tailwindcss/preflight";
+@import "tailwindcss/utilities";
+
+body{
+  @apply  text-gray-900 font-semibold text-xl flex flex-col items-center justify-center min-h-screen font-sans ;
+}
+.login-button{
+  border: lightseagreen solid 2px;
+  height: 40px;
+  border-radius: 3ch;
+  cursor: pointer;
+}
+.login-input{
+  @apply border border-[lightseagreen] border-2 p-2 rounded-xl w-full my-2 text-gray-900;
+  
+}
+.formulario-inputs {
+    @apply w-full flex flex-col p-2;
+  }
+.login-form {
+  @apply  mt-5 rounded-2xl  border-[lightseagreen] border-3 ;
+}
+.formulario {
+    @apply h-100 w-80 p-2 shadow-md flex flex-col justify-around  ;
+  }
+
+@layer utilities {
+
+  
+  .formulario-inputs {
+    @apply w-full flex flex-col mx-2;
+  }
+  
+}

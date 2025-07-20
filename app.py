@@ -5,6 +5,8 @@ from models import UsoMesa, db, Cliente, Mesa
 from datetime import datetime
 import statistics
 from flask_migrate import Migrate
+from flask import render_template, request, redirect, url_for, session, flash
+from models import Trabajador
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite3'
@@ -127,6 +129,49 @@ def obtener_clientes():
             'joined_at': c.joined_at.strftime('%Y-%m-%d %H:%M:%S')
         } for c in clientes
     ])
+
+
+@app.route('/registro', methods=['GET', 'POST'])
+def registro():
+    if request.method == 'POST':
+        nombre = request.form['nombre']
+        username = request.form['username']
+        password = request.form['password']
+
+        if Trabajador.query.filter_by(username=username).first():
+            flash('El usuario ya existe')
+            return redirect(url_for('registro'))
+
+        nuevo = Trabajador(nombre=nombre, username=username)
+        nuevo.set_password(password)
+        db.session.add(nuevo)
+        db.session.commit()
+        flash('Registro exitoso, ahora inicia sesión')
+        return redirect(url_for('login'))
+
+    return render_template('registro_mesero.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        trabajador = Trabajador.query.filter_by(username=username).first()
+
+        if trabajador and trabajador.check_password(password):
+            session['trabajador_id'] = trabajador.id
+            flash('Bienvenido, ' + trabajador.nombre)
+            return redirect(url_for('worker'))  # o tu dashboard
+        else:
+            flash('Credenciales incorrectas')
+    
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('trabajador_id', None)
+    flash('Sesión cerrada')
+    return redirect(url_for('login'))
 
 
 if __name__ == "__main__":

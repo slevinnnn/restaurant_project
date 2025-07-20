@@ -1,0 +1,26 @@
+<!-- templates/login.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login de Trabajador</title>
+  <link href="/static/styles/output.css" rel="stylesheet">
+</head>
+<body >
+  <form method="POST" class="login-form">
+    <div class="formulario" id="formulario_login">
+        <div class="formulario-inputs" id="formulario-inputs">
+            <label for="nombre">Usuario</label>
+            <input type="text" class="login-input" id="nombre"  maxlength="80"><br>
+
+            <label for="password">Contraseña</label>
+            <input type="password" name="password" required class="login-input"><br>
+        </div>
+        <button type="submit" class="login-button">Iniciar sesión</button>
+    </div>
+  
+  </form>
+
+</body>
+</html>
