@@ -2,24 +2,33 @@
 @import "tailwindcss/preflight";
 @import "tailwindcss/utilities";
 
+@theme {
+  --color-primary:#f3d2c1;
+  --color-card_background:#fef6e4;
+  --color-card_headline:#001858;
+  --color-card_text:#172c66;
+  --color-card_text_secondary:rgb(35,44,54);
+
+}
+
 body{
-  @apply  text-gray-900 font-semibold text-xl flex flex-col items-center justify-center min-h-screen font-sans ;
+  @apply bg-card_text_secondary font-semibold text-xl flex flex-col items-center justify-center min-h-screen font-sans text-card_text bg-[url('/public/black-orchid.png')] ;
 }
 .login-button{
-  border: lightseagreen solid 2px;
+  border: rgb(35,44,54) 2px solid;
   height: 40px;
   border-radius: 3ch;
   cursor: pointer;
 }
 .login-input{
-  @apply border border-[lightseagreen] border-2 p-2 rounded-xl w-full my-2 text-gray-900;
+  @apply border border-card_headline border-2 p-2 rounded-xl w-full my-2 text-gray-900;
   
 }
 .formulario-inputs {
     @apply w-full flex flex-col p-2;
   }
 .login-form {
-  @apply  mt-5 rounded-2xl  border-[lightseagreen] border-3 ;
+  @apply  mt-5 rounded-2xl bg-card_background;
 }
 .formulario {
     @apply h-100 w-80 p-2 shadow-md flex flex-col justify-around  ;

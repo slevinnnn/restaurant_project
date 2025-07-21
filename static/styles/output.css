@@ -16,6 +16,10 @@
     --radius-2xl: 1rem;
     --default-font-family: var(--font-sans);
     --default-mono-font-family: var(--font-mono);
+    --color-card_background: #fef6e4;
+    --color-card_headline: #001858;
+    --color-card_text: #172c66;
+    --color-card_text_secondary: rgb(35,44,54);
   }
 }
 @layer base {
@@ -318,15 +322,17 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  background-color: var(--color-card_text_secondary);
+  background-image: url('/public/black-orchid.png');
   font-family: var(--font-sans);
   font-size: var(--text-xl);
   line-height: var(--tw-leading, var(--text-xl--line-height));
   --tw-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-gray-900);
+  color: var(--color-card_text);
 }
 .login-button {
-  border: lightseagreen solid 2px;
+  border: rgb(35,44,54) 2px solid;
   height: 40px;
   border-radius: 3ch;
   cursor: pointer;
@@ -339,7 +345,7 @@ body {
   border-width: 1px;
   border-style: var(--tw-border-style);
   border-width: 2px;
-  border-color: lightseagreen;
+  border-color: var(--color-card_headline);
   padding: calc(var(--spacing) * 2);
   color: var(--color-gray-900);
 }
@@ -352,9 +358,7 @@ body {
 .login-form {
   margin-top: calc(var(--spacing) * 5);
   border-radius: var(--radius-2xl);
-  border-style: var(--tw-border-style);
-  border-width: 3px;
-  border-color: lightseagreen;
+  background-color: var(--color-card_background);
 }
 .formulario {
   display: flex;
