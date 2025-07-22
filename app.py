@@ -19,7 +19,7 @@ socketio = SocketIO(app)
 with app.app_context():
     db.create_all()
     if not Mesa.query.first():
-        for i in range(1, 6):  # Crea 5 mesas
+        for i in range(1, 9):  # Crea 8 mesas
             db.session.add(Mesa())
         db.session.commit()
 

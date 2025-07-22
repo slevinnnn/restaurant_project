@@ -9,9 +9,6 @@
       "Courier New", monospace;
     --color-gray-900: oklch(21% 0.034 264.665);
     --spacing: 0.25rem;
-    --text-xl: 1.25rem;
-    --text-xl--line-height: calc(1.75 / 1.25);
-    --font-weight-semibold: 600;
     --radius-xl: 0.75rem;
     --radius-2xl: 1rem;
     --default-transition-duration: 150ms;
@@ -325,12 +322,7 @@ body {
   align-items: center;
   justify-content: center;
   background-color: var(--color-card_text_secondary);
-  background-image: url('/public/black-orchid.png');
-  font-family: var(--font-sans);
-  font-size: var(--text-xl);
-  line-height: var(--tw-leading, var(--text-xl--line-height));
-  --tw-font-weight: var(--font-weight-semibold);
-  font-weight: var(--font-weight-semibold);
+  background-image: url('/static/images/black-orchid.png');
   color: var(--color-card_text);
 }
 .login-button {
@@ -365,6 +357,23 @@ body {
   border-color: var(--color-card_headline);
   padding: calc(var(--spacing) * 2);
   color: var(--color-gray-900);
+  &::placeholder {
+    color: var(--color-card_text);
+  }
+  &:focus {
+    border-color: transparent;
+  }
+  &:focus {
+    --tw-ring-shadow: var(--tw-ring-inset,) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor);
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+  &:focus {
+    --tw-ring-color: var(--color-card_text);
+  }
+  &:focus {
+    --tw-outline-style: none;
+    outline-style: none;
+  }
 }
 .formulario-inputs {
   display: flex;
@@ -387,6 +396,30 @@ body {
   --tw-shadow: 0 4px 6px -1px var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 2px 4px -2px var(--tw-shadow-color, rgb(0 0 0 / 0.1));
   box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
 }
+.header {
+  margin-top: calc(var(--spacing) * -10);
+  margin-bottom: calc(var(--spacing) * 5);
+  display: flex;
+  height: 30vh;
+  width: 100%;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.header-class {
+  height: 30vh;
+  width: 100%;
+  background-image: url('/static/images/logo-alleria.png');
+  background-size: contain;
+  background-position: 50vw;
+  background-position: 70vh;
+  background-repeat: no-repeat;
+  color: var(--color-card_text);
+}
+.grilla-mesas {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: calc(var(--spacing) * 3);
+}
 @layer utilities {
   .formulario-inputs {
     margin-inline: calc(var(--spacing) * 2);
@@ -399,10 +432,6 @@ body {
   syntax: "*";
   inherits: false;
   initial-value: solid;
-}
-@property --tw-font-weight {
-  syntax: "*";
-  inherits: false;
 }
 @property --tw-duration {
   syntax: "*";
@@ -477,7 +506,6 @@ body {
   @supports ((-webkit-hyphens: none) and (not (margin-trim: inline))) or ((-moz-orient: inline) and (not (color:rgb(from red r g b)))) {
     *, ::before, ::after, ::backdrop {
       --tw-border-style: solid;
-      --tw-font-weight: initial;
       --tw-duration: initial;
       --tw-shadow: 0 0 #0000;
       --tw-shadow-color: initial;

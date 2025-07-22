@@ -2,6 +2,7 @@
 <html>
 <head>
   <title>Trabajador</title>
+  <link  href="/static/styles/output.css" rel="stylesheet">
   <style>
     .mesa {
       border: 1px solid gray;
@@ -15,7 +16,10 @@
   </style>
 </head>
 <body>
-  <h1>Panel de trabajador</h1>
+  <header class="header">
+      <div class="header-class">
+      </div>
+  </header>
 
   <h2>Clientes en espera</h2>
   <ul id="clientes-lista">
@@ -28,25 +32,27 @@
     {% endfor %}
   </ul>
 
-  <h2>Mesas</h2>
-  {% for m in mesas %}
-    <div class="mesa {% if m.is_occupied %}ocupada{% else %}libre{% endif %}" id="mesa-{{ m.id }}">
-      <p><strong>Mesa #{{ m.id }}</strong></p>
-      <p>
-        Estado: <strong>{% if m.is_occupied %}Ocupada{% else %}Libre{% endif %}</strong><br>
-        {% if m.is_occupied %}
-          Cliente asignado: #{{ m.cliente.id if m.cliente else 'Desconocido' }}<br>
-          Tiempo en uso: <span id="timer-{{ m.id }}">calculando...</span>
-        {% endif %}
-      </p>
-      <button class="btn-accion" data-mesa-id="{{ m.id }}" data-ocupada="{{ 'true' if m.is_occupied else 'false' }}">
-        {% if m.is_occupied %}Desocupar mesa{% elif not clientes %}Ocupar mesa manualmente{% endif %}
-      </button>
-    </div>
-  {% endfor %}
+  <div class="grilla-mesas">
+    {% for m in mesas %}
+      <div class="mesa {% if m.is_occupied %}ocupada{% else %}libre{% endif %}" id="mesa-{{ m.id }}">
+        <p><strong>Mesa #{{ m.id }}</strong></p>
+        <p>
+          Estado: <strong>{% if m.is_occupied %}Ocupada{% else %}Libre{% endif %}</strong><br>
+          {% if m.is_occupied %}
+            Cliente asignado: #{{ m.cliente.id if m.cliente else 'Desconocido' }}<br>
+            Tiempo en uso: <span id="timer-{{ m.id }}">calculando...</span>
+          {% endif %}
+        </p>
+        <button class="btn-accion" data-mesa-id="{{ m.id }}" data-ocupada="{{ 'true' if m.is_occupied else 'false' }}">
+          {% if m.is_occupied %}Desocupar mesa{% elif not clientes %}Ocupar mesa manualmente{% endif %}
+        </button>
+      </div>
+    {% endfor %}
+  </div>
 
   <h2>Estadísticas</h2>
   <p id="promedio">Calculando...</p>
+
 
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script>
