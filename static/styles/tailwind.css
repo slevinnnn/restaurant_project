@@ -28,13 +28,13 @@ body {
     @apply w-full flex flex-col p-2;
   }
 .formulario {
-  @apply  mt-5 rounded-2xl bg-card_background;
+  @apply  mt-5 rounded-2xl bg-card_background bg-[url('/static/images/black-thread-light.png')];
 }
 .login-formulario {
     @apply h-100 w-80 p-2 shadow-md flex flex-col justify-around  ;
 }
 .header{
-  @apply  flex flex-col justify-end w-full h-[30vh] mb-5  -mt-10 ;
+  @apply  flex flex-col justify-end w-full h-[30vh] mb-5 relative -top-15 ;
 }
 .header-class {
   @apply  bg-[url('/static/images/logo-alleria.png')] bg-[50vw] bg-[70vh] bg-contain bg-no-repeat  text-card_text w-full h-[30vh]  ;

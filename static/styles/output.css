@@ -166,12 +166,7 @@
     display: none !important;
   }
 }
-@layer utilities {
-  .border {
-    border-style: var(--tw-border-style);
-    border-width: 1px;
-  }
-}
+@layer utilities;
 *, ::after, ::before, ::backdrop, ::file-selector-button {
   box-sizing: border-box;
   margin: 0;
@@ -385,6 +380,7 @@ body {
   margin-top: calc(var(--spacing) * 5);
   border-radius: var(--radius-2xl);
   background-color: var(--color-card_background);
+  background-image: url('/static/images/black-thread-light.png');
 }
 .login-formulario {
   display: flex;
@@ -397,7 +393,8 @@ body {
   box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
 }
 .header {
-  margin-top: calc(var(--spacing) * -10);
+  position: relative;
+  top: calc(var(--spacing) * -15);
   margin-bottom: calc(var(--spacing) * 5);
   display: flex;
   height: 30vh;

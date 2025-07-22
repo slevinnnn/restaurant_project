@@ -18,8 +18,11 @@ socketio = SocketIO(app)
 
 with app.app_context():
     db.create_all()
-    if not Mesa.query.first():
-        for i in range(1, 9):  # Crea 8 mesas
+    mesas_existentes = Mesa.query.count()
+    mesas_deseadas = 8
+    
+    if mesas_existentes < mesas_deseadas:
+        for i in range(mesas_existentes, mesas_deseadas):
             db.session.add(Mesa())
         db.session.commit()
 
