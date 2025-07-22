@@ -34,3 +34,12 @@ class Trabajador(db.Model):
     
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+    
+
+class Pedidos(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    mesa_id = db.Column(db.Integer, db.ForeignKey('mesa.id'), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.now())
+    estado = db.Column(db.String(20), default='pendiente')
+    
+    mesa = db.relationship('Mesa', backref='pedidos')

@@ -14,11 +14,13 @@
     --font-weight-semibold: 600;
     --radius-xl: 0.75rem;
     --radius-2xl: 1rem;
+    --default-transition-duration: 150ms;
+    --default-transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     --default-font-family: var(--font-sans);
     --default-mono-font-family: var(--font-mono);
     --color-card_background: #fef6e4;
     --color-card_headline: #001858;
-    --color-card_text: #172c66;
+    --color-card_text: #ee4b2b;
     --color-card_text_secondary: rgb(35,44,54);
   }
 }
@@ -332,17 +334,32 @@ body {
   color: var(--color-card_text);
 }
 .login-button {
-  border: rgb(35,44,54) 2px solid;
-  height: 40px;
-  border-radius: 3ch;
+  height: 50px;
   cursor: pointer;
+  border-radius: var(--radius-xl);
+  border-style: var(--tw-border-style);
+  border-width: 2px;
+  border-color: var(--color-card_text_secondary);
+  transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to;
+  transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+  transition-duration: var(--tw-duration, var(--default-transition-duration));
+  --tw-duration: 300ms;
+  transition-duration: 300ms;
+  &:hover {
+    @media (hover: hover) {
+      background-color: var(--color-card_text);
+    }
+  }
+  &:hover {
+    @media (hover: hover) {
+      color: var(--color-card_background);
+    }
+  }
 }
 .login-input {
   margin-block: calc(var(--spacing) * 2);
   width: 100%;
   border-radius: var(--radius-xl);
-  border-style: var(--tw-border-style);
-  border-width: 1px;
   border-style: var(--tw-border-style);
   border-width: 2px;
   border-color: var(--color-card_headline);
@@ -355,12 +372,12 @@ body {
   flex-direction: column;
   padding: calc(var(--spacing) * 2);
 }
-.login-form {
+.formulario {
   margin-top: calc(var(--spacing) * 5);
   border-radius: var(--radius-2xl);
   background-color: var(--color-card_background);
 }
-.formulario {
+.login-formulario {
   display: flex;
   height: calc(var(--spacing) * 100);
   width: calc(var(--spacing) * 80);
@@ -384,6 +401,10 @@ body {
   initial-value: solid;
 }
 @property --tw-font-weight {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-duration {
   syntax: "*";
   inherits: false;
 }
@@ -457,6 +478,7 @@ body {
     *, ::before, ::after, ::backdrop {
       --tw-border-style: solid;
       --tw-font-weight: initial;
+      --tw-duration: initial;
       --tw-shadow: 0 0 #0000;
       --tw-shadow-color: initial;
       --tw-shadow-alpha: 100%;
