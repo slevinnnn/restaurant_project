@@ -8,11 +8,16 @@
       border-radius: 10px;
       padding: 10px;
       margin-bottom: 10px;
-      width: 300px;
+      width: 100%; /* Cambiado de 300px fijo a 100% */
+      min-height: 150px; /* Altura mínima para uniformidad */
       background-image: url('/static/images/black-thread-light.png');
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
     .ocupada { background-color: #fdd; }
     .libre { background-color: #dfd; }
+
   </style>
 </head>
 <body>
@@ -22,15 +27,17 @@
   </header>
 
   <h2>Clientes en espera</h2>
-  <ul id="clientes-lista">
-    {% if not clientes %}
-      <li>No hay clientes en espera.</li>
-    {% endif %}
-    {% for c in clientes %}
+  <div class="clientes-container">
+    <ul id="clientes-lista">
+      {% if not clientes %}
+        <li>No hay clientes en espera.</li>
+      {% endif %}
+      {% for c in clientes %}
 
-      <li>Cliente #{{ c.id }} (desde {{ c.joined_at.strftime('%Y-%m-%d %H:%M:%S') }})</li>
-    {% endfor %}
-  </ul>
+        <li>Cliente #{{ c.id }} (desde {{ c.joined_at.strftime('%Y-%m-%d %H:%M:%S') }})</li>
+      {% endfor %}
+    </ul>
+  </div>
 
   <div class="grilla-mesas">
     {% for m in mesas %}
@@ -44,7 +51,7 @@
           {% endif %}
         </p>
         <button class="btn-accion" data-mesa-id="{{ m.id }}" data-ocupada="{{ 'true' if m.is_occupied else 'false' }}">
-          {% if m.is_occupied %}Desocupar mesa{% elif not clientes %}Ocupar mesa manualmente{% endif %}
+          {% if m.is_occupied %}Desocupar mesa{% else %}Ocupar mesa manualmente{% endif %}
         </button>
       </div>
     {% endfor %}

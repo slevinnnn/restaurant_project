@@ -34,14 +34,17 @@ body {
     @apply h-100 w-80 p-2 shadow-md flex flex-col justify-around  ;
 }
 .header{
-  @apply  flex flex-col justify-end w-full h-[30vh] mb-5 relative -top-15 ;
+  @apply  flex flex-col justify-end w-full h-[30vh]  ;
 }
 .header-class {
   @apply  bg-[url('/static/images/logo-alleria.png')] bg-[50vw] bg-[70vh] bg-contain bg-no-repeat  text-card_text w-full h-[30vh]  ;
 }
 
 .grilla-mesas{
-  @apply  grid grid-cols-4 gap-3;
+  @apply  grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-4 ;
+}
+.clientes-container{
+  @apply max-h-30 overflow-y-auto border border-gray-300 rounded-lg p-4 bg-gray-50 mb-6 
 }
 
 @layer utilities {
