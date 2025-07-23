@@ -3,22 +3,7 @@
 <head>
   <title>Trabajador</title>
   <link  href="/static/styles/output.css" rel="stylesheet">
-  <style>
-    .mesa {
-      border-radius: 10px;
-      padding: 10px;
-      margin-bottom: 10px;
-      width: 100%; /* Cambiado de 300px fijo a 100% */
-      min-height: 150px; /* Altura mínima para uniformidad */
-      background-image: url('/static/images/black-thread-light.png');
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-    }
-    .ocupada { background-color: #fdd; }
-    .libre { background-color: #dfd; }
 
-  </style>
 </head>
 <body>
   <header class="header">
@@ -26,8 +11,9 @@
       </div>
   </header>
 
-  <h2>Clientes en espera</h2>
+  
   <div class="clientes-container">
+    <p class="text-2xl font-bold">Clientes en espera</p>
     <ul id="clientes-lista">
       {% if not clientes %}
         <li>No hay clientes en espera.</li>
@@ -42,7 +28,7 @@
   <div class="grilla-mesas">
     {% for m in mesas %}
       <div class="mesa {% if m.is_occupied %}ocupada{% else %}libre{% endif %}" id="mesa-{{ m.id }}">
-        <p><strong>Mesa #{{ m.id }}</strong></p>
+        <p class="numero_mesa"><strong>Mesa #{{ m.id }}</strong></p>
         <p>
           Estado: <strong>{% if m.is_occupied %}Ocupada{% else %}Libre{% endif %}</strong><br>
           {% if m.is_occupied %}
@@ -115,10 +101,10 @@
       const horas = Math.floor(minutos / 60);
 
       if (horas > 0) {
-        return `${horas} hora${horas > 1 ? 's' : ''} ${minutos % 60} minuto${minutos > 1 ? 's' : ''}`;
+        return `${horas} hr${horas > 1 ? 's' : ''} ${minutos % 60} min${minutos > 1 ? 's' : ''}`;
       }
       else if (minutos > 0) {
-        return `${minutos} minuto${minutos > 1 ? 's' : ''} `;
+        return `${minutos} min${minutos > 1 ? 's' : ''} `;
       }
       else if(horas==0&&minutos==0){
         return `${totalSegundos} segundos`;
