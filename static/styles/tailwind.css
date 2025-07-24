@@ -3,15 +3,50 @@
 @import "tailwindcss/utilities";
 
 @theme {
-  --color-primary:#f3d2c1;
-  --color-card_background:#fef6e4;
-  --color-card_headline:#001858;
-  --color-card_text:#ee4b2b;
-  --color-card_text_secondary:rgb(35,44,54);
+  /* Color primario y sus variantes */
+  --color-primary: #f3d2c1;
+  --color-primary-light-1: #f7e1d4;
+  --color-primary-light-2: #fbefe7;
+  --color-primary-dark-1: #eab8a3;
+  --color-primary-dark-2: #e19e85;
 
+  /* Color de fondo de tarjeta y sus variantes */
+  --color-card_background: #fef6e4;
+  --color-card_background-light-1: #fefaf1;
+  --color-card_background-light-2: #fffdf8;
+  --color-card_background-dark-1: #fdefc8;
+  --color-card_background-dark-2: #fce8ac;
+
+  /* Color de encabezado y sus variantes */
+  --color-card_headline: #001858;
+  --color-card_headline-light-1: #002b85;
+  --color-card_headline-light-2: #003eb2;
+  --color-card_headline-dark-1: #00102b;
+  --color-card_headline-dark-2: #000814;
+
+  /* Color de texto principal y sus variantes */
+  --color-card_text: #ee4b2b;
+  --color-card_text-light-1: #f17155;
+  --color-card_text-light-2: #f4977f;
+  --color-card_text-dark-1: #d33517;
+  --color-card_text-dark-2: #a82913;
+
+  /* Color de texto secundario y sus variantes */
+  --color-card_text_secondary: rgb(35,44,54);
+  --color-card_text_secondary-light-1: rgb(58,73,89);
+  --color-card_text_secondary-light-2: rgb(81,102,124);
+  --color-card_text_secondary-dark-1: rgb(23,29,36);
+  --color-card_text_secondary-dark-2: rgb(12,15,18);
+}
+
+h1, h2, h3, .title-font {
+  font-family: 'Industry Inc', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.05em;
 }
 body {
-  @apply bg-card_background bg-[url('/static/images/black-thread-light.png')]   text-card_text flex flex-col items-center justify-center min-h-screen;
+  @apply bg-card_background bg-[url('/static/images/black-thread-light.png')] text-card_text flex flex-col items-center justify-center min-h-screen;
+  font-family: 'Industry Inc', sans-serif;
 }
 
 main {
@@ -139,7 +174,7 @@ main {
     @apply w-full flex flex-col p-2;
   }
 .formulario {
-  @apply  mt-5 rounded-2xl bg-card_background bg-[url('/static/images/black-thread-light.png')];
+  @apply  mt-5 rounded-2xl bg-card_background bg-[url('/static/images/black-thread-light.png')] border-3 border-card_text shadow-lg;
 }
 .login-formulario {
     @apply h-100 w-80 p-2 shadow-md flex flex-col justify-around  ;
@@ -155,7 +190,7 @@ main {
   @apply  grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-4 ;
 }
 .mesa {
-  @apply rounded-full p-2.5 mb-2.5 w-full min-h-[150px] bg-[url('/static/images/black-thread-light.png')] flex flex-col justify-between bg-white pl-7;
+  @apply rounded-full p-2.5 mb-2.5 w-full min-h-[150px] bg-[url('/static/images/black-thread-light.png')] flex flex-col justify-between  pl-7;
 }
 
 .logo-navbar {
@@ -177,7 +212,28 @@ main {
 }
 
 .clientes-container{
-  @apply flex flex-col justify-start gap-4;
+  @apply flex flex-col justify-start gap-4 w-full max-w-5xl mx-auto px-4 py-8;
+}
+
+/* Estilos para la tabla de clientes */
+.clientes-table {
+  @apply min-w-full bg-card_background shadow-lg rounded-lg overflow-hidden;
+}
+
+.clientes-table thead {
+  @apply bg-gray-800 text-white;
+}
+
+.clientes-table th {
+  @apply px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider;
+}
+
+.clientes-table td {
+  @apply px-6 py-4 whitespace-nowrap;
+}
+
+.waiting-time {
+  @apply inline-flex items-center justify-center px-2 py-1 text-sm font-medium rounded-full;
 }
 
 .numero_mesa {

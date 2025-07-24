@@ -70,10 +70,10 @@ def enviar_estado_cola():
 
 @app.route('/liberar_mesa/<int:mesa_id>', methods=['POST'])
 def liberar_mesa(mesa_id):
-    mesa = Mesa.query.get(mesa_id)
+    mesa = db.session.get(Mesa, mesa_id)
     if mesa and mesa.is_occupied:
         tiempo_usado = (datetime.now() - mesa.start_time).total_seconds() if mesa.start_time else 0
-        uso = UsoMesa(mesa_id=mesa.id, duracion=tiempo_usado)#guarda el tiempo de uso de la mesa para calcular promedio
+        uso = UsoMesa(mesa_id=mesa.id, duracion=tiempo_usado)
         db.session.add(uso)
         mesa.is_occupied = False
         mesa.start_time = None
@@ -91,21 +91,21 @@ def liberar_mesa(mesa_id):
                 socketio.emit("es_tu_turno", {
                     "mesa": mesa.id
                 }, to=siguiente.sid)
-        enviar_estado_cola()  # Actualiza el estado de la cola para todos los clientes
-        return jsonify({"mensaje": "Mesa liberada", "duracion": tiempo_usado})
-    enviar_estado_cola()  # Actualiza el estado de la cola para todos los clientes
-    return jsonify({"mensaje": "Mesa no ocupada o no encontrada"})
+        enviar_estado_cola()
+        return jsonify({"success": True})
+    enviar_estado_cola()
+    return jsonify({"success": False})
 
 @app.route('/ocupar_mesa/<int:mesa_id>', methods=['POST'])
 def ocupar_mesa(mesa_id):
-    mesa = Mesa.query.get(mesa_id)
+    mesa = db.session.get(Mesa, mesa_id)
     if mesa and not mesa.is_occupied:
         mesa.is_occupied = True
         mesa.start_time = datetime.now()
         mesa.cliente_id = None
         db.session.commit()
-        return jsonify({"mensaje": "Mesa marcada como ocupada manualmente."})
-    return jsonify({"mensaje": "Mesa ya ocupada o no encontrada."})
+        return jsonify({"success": True})
+    return jsonify({"success": False})
 
 @app.route('/estadisticas')
 def estadisticas():
@@ -150,9 +150,22 @@ def registro():
         nombre = request.form['nombre']
         username = request.form['username']
         password = request.form['password']
+        confirm_password = request.form['confirm_password']
+
+        if not nombre or not username or not password or not confirm_password:
+            flash('Todos los campos son requeridos')
+            return redirect(url_for('registro'))
+
+        if password != confirm_password:
+            flash('Las contraseñas no coinciden')
+            return redirect(url_for('registro'))
 
         if Trabajador.query.filter_by(username=username).first():
-            flash('El usuario ya existe')
+            flash('El nombre de usuario ya existe')
+            return redirect(url_for('registro'))
+
+        if len(password) < 6:
+            flash('La contraseña debe tener al menos 6 caracteres')
             return redirect(url_for('registro'))
 
         nuevo = Trabajador(nombre=nombre, username=username)

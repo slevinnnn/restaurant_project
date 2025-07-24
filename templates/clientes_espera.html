@@ -8,16 +8,35 @@
 <body>
 {% block content %}
   <div class="clientes-container">
-    <p class="text-2xl font-bold">Clientes en espera</p>
-    <ul id="clientes-lista">
-      {% if not clientes %}
-        <li>No hay clientes en espera.</li>
-      {% endif %}
-      {% for c in clientes %}
+    <p class="text-3xl font-bold mb-6 text-center">Lista de Clientes en Espera</p>
 
-        <li>Cliente #{{ c.id }} (desde {{ c.joined_at.strftime('%Y-%m-%d %H:%M:%S') }})</li>
-      {% endfor %}
-    </ul>
+    <div class="overflow-x-auto">
+      <table class="min-w-full bg-card_background-light-1 bg-[url('/static/images/black-thread-light.png')] rounded-2xl overflow-hidden shadow-lg">
+        <thead class="bg-card_background-light-1 bg-[url('/static/images/black-thread-light.png')] bg-opacity-90 text-card_text font-bold text-xl h-12 rounded-2xl">
+          <tr>
+            <th class="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">ID Cliente</th>
+            <th class="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">Hora de Llegada</th>
+            <th class="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">Tiempo de Espera</th>
+          </tr>
+        </thead>
+        <tbody id="clientes-lista">
+          {% if not clientes %}
+          <tr>
+            <td colspan="3" class="px-6 py-4 text-center text-gray-500 font-medium">No hay clientes en espera</td>
+          </tr>
+          {% endif %}
+          {% for c in clientes %}
+          <tr class="border-b border-card_background-light-1 hover:bg-card_background-dark-1">
+            <td class="px-6 py-4 whitespace-nowrap font-medium">Cliente #{{ c.id }}</td>
+            <td class="px-6 py-4 whitespace-nowrap">{{ c.joined_at.strftime('%H:%M:%S') }}</td>
+            <td class="px-6 py-4 whitespace-nowrap" id="wait-time-{{ c.id }}">
+              <span class="waiting-time" data-joined="{{ c.joined_at.isoformat() }}">Calculando...</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 {% endblock %}
 {% block scripts %}
@@ -25,18 +44,64 @@
     <script>
       const socket = io();
 
+      function formatTimeElapsed(seconds) {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const remainingSeconds = seconds % 60;
+
+        if (hours > 0) {
+          return `${hours}h ${minutes}m `;
+        } else if (minutes > 0) {
+          return `${minutes}m`;
+        } else {
+          return `${remainingSeconds}s`;
+        }
+      }
+
+      function updateWaitingTimes() {
+        document.querySelectorAll('.waiting-time').forEach(span => {
+          const joinedTime = new Date(span.dataset.joined);
+          const now = new Date();
+          const secondsWaiting = Math.floor((now - joinedTime) / 1000);
+          span.textContent = formatTimeElapsed(secondsWaiting);
+        });
+      }
+
+      // Actualizar tiempos cada segundo
+      setInterval(updateWaitingTimes, 1000);
+      updateWaitingTimes(); // Actualización inicial
+
       socket.on('actualizar_cola', () => {
-        // Llamamos a la API para obtener la lista actualizada de clientes
         fetch('/clientes')
           .then(res => res.json())
           .then(data => {
-            const ul = document.querySelector('#clientes-lista');
-            ul.innerHTML = '';
-            data.forEach(c => {
-              const li = document.createElement('li');
-              li.textContent = `Cliente #${c.id} (desde ${c.joined_at})`;
-              ul.appendChild(li);
-            });
+            const tbody = document.querySelector('#clientes-lista');
+            tbody.innerHTML = '';
+            
+            if (data.length === 0) {
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                <td colspan="3" class="px-6 py-4 text-center text-gray-500 font-medium">
+                  No hay clientes en espera
+                </td>
+              `;
+              tbody.appendChild(tr);
+            } else {
+              data.forEach(c => {
+                const joinedDate = new Date(c.joined_at);
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-gray-200 hover:bg-gray-50';
+                tr.innerHTML = `
+                  <td class="px-6 py-4 whitespace-nowrap font-medium">Cliente #${c.id}</td>
+                  <td class="px-6 py-4 whitespace-nowrap">${joinedDate.toLocaleTimeString()}</td>
+                  <td class="px-6 py-4 whitespace-nowrap" id="wait-time-${c.id}">
+                    <span class="waiting-time" data-joined="${c.joined_at}">Calculando...</span>
+                  </td>
+                `;
+                tbody.appendChild(tr);
+              });
+              updateWaitingTimes();
+            }
           });
       });
     </script>

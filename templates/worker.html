@@ -19,7 +19,7 @@
           {% endif %}
         </p>
         <button class="btn-accion" data-mesa-id="{{ m.id }}" data-ocupada="{{ 'true' if m.is_occupied else 'false' }}">
-          {% if m.is_occupied %}Desocupar mesa{% else %}Ocupar mesa manualmente{% endif %}
+          {% if m.is_occupied %}Desocupar mesa{% else %}Asignar mesa{% endif %}
         </button>
       </div>
     {% endfor %}
@@ -54,20 +54,24 @@
 
 
     function accionMesa(mesaId, ocupada) {
-      if (ocupada) {
-        fetch(`/liberar_mesa/${mesaId}`, { method: 'POST' })
-          .then(res => res.json())
-          .then(data => {
-            alert(data.mensaje);
-            location.reload();
-          });
-      } else {
-        fetch(`/ocupar_mesa/${mesaId}`, { method: 'POST' })
-          .then(res => res.json())
-          .then(data => {
-            alert(data.mensaje);
-            location.reload();
-          });
+      const mensaje = ocupada ? 
+        "¿Estás seguro de que deseas desocupar esta mesa?" : 
+        "¿Estás seguro de que deseas ocupar esta mesa manualmente?";
+
+      if (confirm(mensaje)) {
+        if (ocupada) {
+          fetch(`/liberar_mesa/${mesaId}`, { method: 'POST' })
+            .then(res => res.json())
+            .then(() => {
+              location.reload();
+            });
+        } else {
+          fetch(`/ocupar_mesa/${mesaId}`, { method: 'POST' })
+            .then(res => res.json())
+            .then(() => {
+              location.reload();
+            });
+        }
       }
     }
 

@@ -13,7 +13,15 @@
         <input type="text" class="login-input" name="nombre" placeholder="Nombre" required><br>
         <input type="text" class="login-input" name="username" placeholder="Usuario" required><br>
         <input type="password" class="login-input" name="password" placeholder="Contraseña" required><br>
+        <input type="password" class="login-input" name="confirm_password" placeholder="Confirmar Contraseña" required><br>
       </div>
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          {% for message in messages %}
+            <div class="text-red-500 text-center mt-2">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
       <button type="submit" class="login-button">Registrarse</button>
     </div>
   </form>
