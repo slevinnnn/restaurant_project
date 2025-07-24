@@ -190,7 +190,7 @@ main {
   @apply  grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-4 ;
 }
 .mesa {
-  @apply rounded-full p-2.5 mb-2.5 w-full min-h-[150px] bg-[url('/static/images/black-thread-light.png')] flex flex-col justify-between  pl-7;
+  @apply bg-card_background rounded-full p-2.5 mb-2.5 w-full min-h-[150px] bg-[url('/static/images/black-thread-light.png')] flex flex-col justify-between pl-7;
 }
 
 .logo-navbar {
@@ -230,6 +230,10 @@ main {
 
 .clientes-table td {
   @apply px-6 py-4 whitespace-nowrap;
+}
+
+.clientes-table tr {
+  @apply  border-card_background-dark-2 border-b-2 hover:bg-card_background-dark-1;
 }
 
 .waiting-time {

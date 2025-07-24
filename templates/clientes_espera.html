@@ -25,7 +25,7 @@
           </tr>
           {% endif %}
           {% for c in clientes %}
-          <tr class="border-b border-card_background-light-1 hover:bg-card_background-dark-1">
+          <tr>
             <td class="px-6 py-4 whitespace-nowrap font-medium">Cliente #{{ c.id }}</td>
             <td class="px-6 py-4 whitespace-nowrap">{{ c.joined_at.strftime('%H:%M:%S') }}</td>
             <td class="px-6 py-4 whitespace-nowrap" id="wait-time-{{ c.id }}">

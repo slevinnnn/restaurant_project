@@ -35,6 +35,7 @@
     --color-card_background: #fef6e4;
     --color-card_background-light-1: #fefaf1;
     --color-card_background-dark-1: #fdefc8;
+    --color-card_background-dark-2: #fce8ac;
     --color-card_headline: #001858;
     --color-card_text: #ee4b2b;
     --color-card_text_secondary: rgb(35,44,54);
@@ -209,9 +210,6 @@
     border-bottom-style: var(--tw-border-style);
     border-bottom-width: 1px;
   }
-  .border-card_background-light-1 {
-    border-color: var(--color-card_background-light-1);
-  }
   .border-gray-200 {
     border-color: var(--color-gray-200);
   }
@@ -260,13 +258,6 @@
   }
   .uppercase {
     text-transform: uppercase;
-  }
-  .hover\:bg-card_background-dark-1 {
-    &:hover {
-      @media (hover: hover) {
-        background-color: var(--color-card_background-dark-1);
-      }
-    }
   }
   .hover\:bg-gray-50 {
     &:hover {
@@ -658,6 +649,7 @@ main {
   flex-direction: column;
   justify-content: space-between;
   border-radius: calc(infinity * 1px);
+  background-color: var(--color-card_background);
   background-image: url('/static/images/black-thread-light.png');
   padding: calc(var(--spacing) * 2.5);
   padding-left: calc(var(--spacing) * 7);
@@ -724,6 +716,16 @@ main {
   padding-inline: calc(var(--spacing) * 6);
   padding-block: calc(var(--spacing) * 4);
   white-space: nowrap;
+}
+.clientes-table tr {
+  border-bottom-style: var(--tw-border-style);
+  border-bottom-width: 2px;
+  border-color: var(--color-card_background-dark-2);
+  &:hover {
+    @media (hover: hover) {
+      background-color: var(--color-card_background-dark-1);
+    }
+  }
 }
 .waiting-time {
   display: inline-flex;
