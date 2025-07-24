@@ -9,7 +9,9 @@
   <header class="top-header">
     <img class="logo-header" src="{{ url_for('static', filename='images/logo-alleria.png') }}" alt="logo-header" />
     <a href="{{ url_for('logout') }}" class="logout-button">
-      <img class="img-navbar" src="{{ url_for('static', filename='images/icono-usuario.jpg') }}" alt="Logout" />
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-15">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+      </svg>
     </a>
   </header>
   
@@ -19,11 +21,15 @@
 
   <nav class="navbar">
     <div class="navbar_menu">
-      <a href="{{ url_for('trabajador') }}" class="nav-icon">
-        <img class="img-navbar" src="{{ url_for('static', filename='images/foto-mesa.jpg') }}" alt="Mesas" />
+      <a href="{{ url_for('trabajador') }}" class="nav-section {% if request.endpoint == 'trabajador' %}active{% endif %}">
+        <div class="nav-content">
+          <img class="img-navbar" src="{{ url_for('static', filename='images/icono-mesas-bar.png') }}" alt="Mesas" />
+        </div>
       </a>
-      <a href="{{ url_for('clientes_espera') }}" class="nav-icon">
-        <img class="img-navbar" src="{{ url_for('static', filename='images/icono-lista-2.jpg') }}" alt="Lista de espera" />
+      <a href="{{ url_for('clientes_espera') }}" class="nav-section {% if request.endpoint == 'clientes_espera' %}active{% endif %}">
+        <div class="nav-content">
+          <img class="img-navbar" src="{{ url_for('static', filename='images/icono_lista.png') }}" alt="Lista de espera" />
+        </div>
       </a>
     </div>
   </nav>

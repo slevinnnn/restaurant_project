@@ -11,7 +11,7 @@
 
 }
 body {
-  @apply bg-card_text_secondary  bg-[url('/static/images/black-orchid.png')] text-card_text flex flex-col items-center justify-center min-h-screen;
+  @apply bg-card_background bg-[url('/static/images/black-thread-light.png')]   text-card_text flex flex-col items-center justify-center min-h-screen;
 }
 
 main {
@@ -42,7 +42,7 @@ main {
   left: 0;
   right: 0;
   height: 10vh;
-  background-color: var(--color-card_text_secondary);
+  background-color: var(--color-card_background);
   border-bottom: 2px solid var(--color-card_text);
   display: flex;
   justify-content: space-between;
@@ -67,7 +67,7 @@ main {
   left: 0;
   right: 0;
   height: 12vh;
-  background-color: var(--color-card_text_secondary);
+  background-color: var(--color-card_background);
   border-top: 3px solid var(--color-card_text);
   z-index: 50;
 }
@@ -76,27 +76,53 @@ main {
   height: 100%;
   width: 100%;
   display: flex;
+}
+
+.nav-section {
+  flex: 1;
+  height: 100%;
+  display: flex;
   justify-content: center;
   align-items: center;
-  gap: 80px;
+  position: relative;
+  transition: background-color 0.3s;
+}
+
+.nav-section:after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  width: 0;
+  height: 3px;
+  background-color: var(--color-card_text);
+  transition: width 0.3s;
+}
+
+.nav-section.active:after {
+  width: 100%;
+}
+
+.nav-section:active {
+  background-color: rgba(222, 203, 200, 0.1);
+}
+
+.nav-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
 }
 
 .img-navbar {
-  height: 50px;
-  width: 50px;
-  object-fit: cover;
-  border: 2px solid var(--color-card_text);
-  border-radius: 1ch;
-  background: transparent;
+  height: 60px;
+  width: 60px;
+  object-fit: contain;
 }
 
-.nav-icon {
-  padding: 8px;
-  transition: transform 0.2s;
-}
-
-.nav-icon:active {
-  transform: scale(0.95);
+.nav-label {
+  font-size: 12px;
+  color: var(--color-card_text);
+  font-weight: 500;
 }
 
 
@@ -152,6 +178,10 @@ main {
 
 .clientes-container{
   @apply flex flex-col justify-start gap-4;
+}
+
+.numero_mesa {
+  @apply relative left-40 text-xl text-card_text font-bold;
 }
 
 @layer utilities {

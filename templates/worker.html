@@ -11,11 +11,10 @@
   <div class="grilla-mesas">
     {% for m in mesas %}
       <div class="mesa {% if m.is_occupied %}ocupada{% else %}libre{% endif %}" id="mesa-{{ m.id }}">
-        <p class="numero_mesa"><strong>Mesa #{{ m.id }}</strong></p>
+        <p class="numero_mesa"><strong>{{ m.id }}</strong></p>
         <p>
-          Estado: <strong>{% if m.is_occupied %}Ocupada{% else %}Libre{% endif %}</strong><br>
           {% if m.is_occupied %}
-            Cliente asignado: #{{ m.cliente.id if m.cliente else 'Desconocido' }}<br>
+            Cliente ID: {{ m.cliente.id if m.cliente else 'Desconocido' }}<br>
             Tiempo en uso: <span id="timer-{{ m.id }}">calculando...</span>
           {% endif %}
         </p>
