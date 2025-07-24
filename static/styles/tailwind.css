@@ -11,7 +11,7 @@
 
 }
 body {
-  @apply bg-card_text_secondary  bg-[url('/static/images/black-orchid.png')] text-card_text flex flex-col items-center justify-center min-h-screen;
+  @apply bg-card_text_secondary  bg-[url('/static/images/black-orchid.png')] text-card_text flex flex-col items-center min-h-screen;
 }
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
@@ -26,6 +26,32 @@ body {
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #555;
+}
+.navbar{
+  height: 15vh;
+  width: 100vw;
+  background-color: var(--color-card_text_secondary);
+  border-bottom: 3px solid var(--color-card_text);
+  border-radius: 0 0 2ch 2ch;
+  margin-bottom: 4ch;
+}
+.navbar_menu{
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  margin-left: 30px;
+  gap: 40px;
+
+}
+.img-navbar{
+  height: 60px;
+  width: 60px;
+  object-fit: cover;
+  border: 2px solid var(--color-card_text);
+  border-radius: 2ch;
 }
 
 
@@ -61,6 +87,10 @@ body {
   @apply rounded-full p-2.5 mb-2.5 w-full min-h-[150px] bg-[url('/static/images/black-thread-light.png')] flex flex-col justify-between bg-white pl-7;
 }
 
+.logo-navbar {
+  @apply h-20 w-28 object-contain;
+}
+
 
 
 .ocupada { 
@@ -76,7 +106,7 @@ body {
 }
 
 .clientes-container{
-  @apply max-h-32 overflow-y-auto  rounded-lg w-full p-4 mb-6 flex  flex-col;
+  @apply flex flex-col justify-start gap-4;
 }
 
 @layer utilities {

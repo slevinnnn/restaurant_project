@@ -1,29 +1,12 @@
+{% extends "base.html" %}
 <!DOCTYPE html>
 <html>
 <head>
   <title>Trabajador</title>
   <link  href="/static/styles/output.css" rel="stylesheet">
-
 </head>
 <body>
-  <header class="header">
-      <div class="header-class">
-      </div>
-  </header>
-
-  
-  <div class="clientes-container">
-    <p class="text-2xl font-bold">Clientes en espera</p>
-    <ul id="clientes-lista">
-      {% if not clientes %}
-        <li>No hay clientes en espera.</li>
-      {% endif %}
-      {% for c in clientes %}
-
-        <li>Cliente #{{ c.id }} (desde {{ c.joined_at.strftime('%Y-%m-%d %H:%M:%S') }})</li>
-      {% endfor %}
-    </ul>
-  </div>
+  {% block content %}
 
   <div class="grilla-mesas">
     {% for m in mesas %}
@@ -45,6 +28,9 @@
 
   <h2>Estadísticas</h2>
   <p id="promedio">Calculando...</p>
+  {% endblock %}
+
+    {% block scripts %}
 
 
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
@@ -159,8 +145,8 @@
     setInterval(actualizarEstadisticas, 5000);
     actualizarEstadisticas();
   </script>
+  {% endblock %}
   
-
 </body>
 </html>
 

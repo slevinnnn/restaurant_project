@@ -16,7 +16,6 @@
     --text-2xl: 1.5rem;
     --text-2xl--line-height: calc(2 / 1.5);
     --font-weight-bold: 700;
-    --radius-lg: 0.5rem;
     --radius-xl: 0.75rem;
     --radius-2xl: 1rem;
     --default-transition-duration: 150ms;
@@ -175,6 +174,12 @@
   }
 }
 @layer utilities {
+  .static {
+    position: static;
+  }
+  .block {
+    display: block;
+  }
   .text-2xl {
     font-size: var(--text-2xl);
     line-height: var(--tw-leading, var(--text-2xl--line-height));
@@ -332,7 +337,6 @@ body {
   min-height: 100vh;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   background-color: var(--color-card_text_secondary);
   background-image: url('/static/images/black-orchid.png');
   color: var(--color-card_text);
@@ -350,6 +354,31 @@ body {
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #555;
+}
+.navbar {
+  height: 15vh;
+  width: 100vw;
+  background-color: var(--color-card_text_secondary);
+  border-bottom: 3px solid var(--color-card_text);
+  border-radius: 0 0 2ch 2ch;
+  margin-bottom: 4ch;
+}
+.navbar_menu {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  margin-left: 30px;
+  gap: 40px;
+}
+.img-navbar {
+  height: 60px;
+  width: 60px;
+  object-fit: cover;
+  border: 2px solid var(--color-card_text);
+  border-radius: 2ch;
 }
 .login-button {
   height: 50px;
@@ -468,6 +497,11 @@ body {
   padding: calc(var(--spacing) * 2.5);
   padding-left: calc(var(--spacing) * 7);
 }
+.logo-navbar {
+  height: calc(var(--spacing) * 20);
+  width: calc(var(--spacing) * 28);
+  object-fit: contain;
+}
 .ocupada {
   border-style: var(--tw-border-style);
   border-width: 4px;
@@ -484,14 +518,10 @@ body {
   border-color: var(--color-blue-500);
 }
 .clientes-container {
-  margin-bottom: calc(var(--spacing) * 6);
   display: flex;
-  max-height: calc(var(--spacing) * 32);
-  width: 100%;
   flex-direction: column;
-  overflow-y: auto;
-  border-radius: var(--radius-lg);
-  padding: calc(var(--spacing) * 4);
+  justify-content: flex-start;
+  gap: calc(var(--spacing) * 4);
 }
 @layer utilities {
   .formulario-inputs {

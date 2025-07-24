@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clientes en Espera</title>
+</head>
+<body>
+{% block content %}
+  <div class="clientes-container">
+    <p class="text-2xl font-bold">Clientes en espera</p>
+    <ul id="clientes-lista">
+      {% if not clientes %}
+        <li>No hay clientes en espera.</li>
+      {% endif %}
+      {% for c in clientes %}
+
+        <li>Cliente #{{ c.id }} (desde {{ c.joined_at.strftime('%Y-%m-%d %H:%M:%S') }})</li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endblock %}
+{% block scripts %}
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+      const socket = io();
+
+      socket.on('actualizar_cola', () => {
+        // Llamamos a la API para obtener la lista actualizada de clientes
+        fetch('/clientes')
+          .then(res => res.json())
+          .then(data => {
+            const ul = document.querySelector('#clientes-lista');
+            ul.innerHTML = '';
+            data.forEach(c => {
+              const li = document.createElement('li');
+              li.textContent = `Cliente #${c.id} (desde ${c.joined_at})`;
+              ul.appendChild(li);
+            });
+          });
+      });
+    </script>
+{% endblock %}
+</body>
+</html>

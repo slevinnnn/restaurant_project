@@ -35,7 +35,7 @@ def cliente():
     enviar_estado_cola()  # Actualiza el estado de la cola para todos los clientes
     return render_template('client.html', numero=nuevo.id)
 
-@app.route('/trabajador')
+@app.route('/trabajador',methods=['GET',"POST"])
 def trabajador():
     clientes = Cliente.query.filter_by(assigned_table=None).order_by(Cliente.joined_at).all()
     mesas = Mesa.query.all()
@@ -176,6 +176,11 @@ def logout():
     flash('Sesión cerrada')
     return redirect(url_for('login'))
 
+
+@app.route('/clientes_espera')
+def clientes_espera():
+    clientes = Cliente.query.filter_by(assigned_table=None).order_by(Cliente.joined_at).all()
+    return render_template('clientes_espera.html', clientes=clientes)
 
 if __name__ == "__main__":
     socketio.run(app)
