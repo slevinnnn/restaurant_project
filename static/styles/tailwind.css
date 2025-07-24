@@ -174,7 +174,7 @@ main {
     @apply w-full flex flex-col p-2;
   }
 .formulario {
-  @apply  mt-5 rounded-2xl bg-card_background bg-[url('/static/images/black-thread-light.png')] border-3 border-card_text shadow-lg;
+  @apply  mt-5 rounded-2xl bg-card_background-light-1 bg-[url('/static/images/black-thread-light.png')] border-3 border-card_background-dark-1 shadow-lg;
 }
 .login-formulario {
     @apply h-100 w-80 p-2 shadow-md flex flex-col justify-around  ;
