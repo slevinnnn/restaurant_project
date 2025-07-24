@@ -13,6 +13,8 @@
     --color-gray-900: oklch(21% 0.034 264.665);
     --color-white: #fff;
     --spacing: 0.25rem;
+    --text-sm: 0.875rem;
+    --text-sm--line-height: calc(1.25 / 0.875);
     --text-2xl: 1.5rem;
     --text-2xl--line-height: calc(2 / 1.5);
     --font-weight-bold: 700;
@@ -177,16 +179,36 @@
   .static {
     position: static;
   }
+  .mt-4 {
+    margin-top: calc(var(--spacing) * 4);
+  }
   .block {
     display: block;
+  }
+  .text-center {
+    text-align: center;
   }
   .text-2xl {
     font-size: var(--text-2xl);
     line-height: var(--tw-leading, var(--text-2xl--line-height));
   }
+  .text-sm {
+    font-size: var(--text-sm);
+    line-height: var(--tw-leading, var(--text-sm--line-height));
+  }
   .font-bold {
     --tw-font-weight: var(--font-weight-bold);
     font-weight: var(--font-weight-bold);
+  }
+  .text-card_text {
+    color: var(--color-card_text);
+  }
+  .hover\:underline {
+    &:hover {
+      @media (hover: hover) {
+        text-decoration-line: underline;
+      }
+    }
   }
 }
 *, ::after, ::before, ::backdrop, ::file-selector-button {
@@ -337,12 +359,12 @@ body {
   min-height: 100vh;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   background-color: var(--color-card_text_secondary);
   background-image: url('/static/images/black-orchid.png');
   color: var(--color-card_text);
 }
 main {
-  padding-top: 20vh;
   padding-bottom: 14vh;
   width: 100%;
   display: flex;

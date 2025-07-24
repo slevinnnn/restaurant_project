@@ -11,11 +11,10 @@
 
 }
 body {
-  @apply bg-card_text_secondary  bg-[url('/static/images/black-orchid.png')] text-card_text flex flex-col items-center min-h-screen;
+  @apply bg-card_text_secondary  bg-[url('/static/images/black-orchid.png')] text-card_text flex flex-col items-center justify-center min-h-screen;
 }
 
 main {
-  padding-top: 20vh;
   padding-bottom: 14vh;
   width: 100%;
   display: flex;

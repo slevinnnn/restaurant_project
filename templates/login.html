@@ -15,8 +15,11 @@
             <input type="password" name="password" required class="login-input" placeholder="Contraseña"><br>
         </div>
         <button type="submit" class="login-button">Iniciar sesión</button>
+        <p class="text-center mt-4 text-sm">
+          ¿No tienes una cuenta? 
+          <a href="{{ url_for('registro') }}" class="text-card_text hover:underline">Regístrate aquí</a>
+        </p>
     </div>
-  
   </form>
 
 </body>
