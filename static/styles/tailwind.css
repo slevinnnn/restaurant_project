@@ -78,7 +78,7 @@ main {
   right: 0;
   height: 10vh;
   background-color: var(--color-card_background);
-  border-bottom: 2px solid var(--color-card_text);
+  background-image: url('/static/images/black-thread-light.png');
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -212,16 +212,16 @@ main {
 }
 
 .clientes-container{
-  @apply flex flex-col justify-start gap-4 w-full max-w-5xl mx-auto px-4 py-8;
+  @apply w-full max-w-5xl mx-auto relative top-10;
 }
 
 /* Estilos para la tabla de clientes */
 .clientes-table {
-  @apply min-w-full bg-card_background shadow-lg rounded-lg overflow-hidden;
+  @apply min-w-full bg-card_background-light-1 bg-[url('/static/images/black-thread-light.png')] shadow-lg rounded-lg;
 }
 
 .clientes-table thead {
-  @apply bg-gray-800 text-white;
+  @apply bg-card_background-light-1 bg-[url('/static/images/black-thread-light.png')] text-card_text font-bold text-xl h-12 rounded-2xl;
 }
 
 .clientes-table th {

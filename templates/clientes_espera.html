@@ -8,15 +8,14 @@
 <body>
 {% block content %}
   <div class="clientes-container">
-    <p class="text-3xl font-bold mb-6 text-center">Lista de Clientes en Espera</p>
 
     <div class="overflow-x-auto">
-      <table class="min-w-full bg-card_background-light-1 bg-[url('/static/images/black-thread-light.png')] rounded-2xl overflow-hidden shadow-lg">
-        <thead class="bg-card_background-light-1 bg-[url('/static/images/black-thread-light.png')] bg-opacity-90 text-card_text font-bold text-xl h-12 rounded-2xl">
+      <table class="clientes-table">
+        <thead>
           <tr>
             <th class="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">ID Cliente</th>
             <th class="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">Hora de Llegada</th>
-            <th class="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">Tiempo de Espera</th>
+            <th class="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">Tiempo en Espera</th>
           </tr>
         </thead>
         <tbody id="clientes-lista">
