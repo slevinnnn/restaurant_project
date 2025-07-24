@@ -10,7 +10,7 @@
 
   <div class="grilla-mesas">
     {% for m in mesas %}
-      <div class="mesa {% if m.is_occupied %}ocupada{% else %}libre{% endif %}" id="mesa-{{ m.id }}">
+      <div class="mesa {% if m.is_occupied %}{% if m.recien_asignada %}recien-asignada{% else %}ocupada{% endif %}{% else %}libre{% endif %}" id="mesa-{{ m.id }}">
         <p class="numero_mesa"><strong>{{ m.id }}</strong></p>
         <p>
           {% if m.is_occupied %}
@@ -125,12 +125,22 @@
 
     function iniciarTemporizador(mesaId, startTimeStr) {
       const startTime = new Date(startTimeStr);
+      const mesaElement = document.getElementById(`mesa-${mesaId}`);
+      
       function actualizar() {
         const ahora = new Date();
         const segundos = Math.floor((ahora - startTime) / 1000);
-
+        
+        // Actualizar el temporizador
         document.getElementById(`timer-${mesaId}`).innerText = `${horas_minutos_segundos(segundos)}`;
+        
+        // Cambiar de recién asignada a ocupada después de 5 minutos
+        if (segundos >= 300 && mesaElement.classList.contains('recien-asignada')) {
+          mesaElement.classList.remove('recien-asignada');
+          mesaElement.classList.add('ocupada');
+        }
       }
+      
       setInterval(actualizar, 1000);
       actualizar();
     }

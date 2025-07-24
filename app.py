@@ -37,8 +37,18 @@ def cliente():
 
 @app.route('/trabajador',methods=['GET',"POST"])
 def trabajador():
+    current_time = datetime.now()
     clientes = Cliente.query.filter_by(assigned_table=None).order_by(Cliente.joined_at).all()
     mesas = Mesa.query.all()
+    
+    # Calcular qué mesas son recién asignadas (menos de 5 minutos)
+    for mesa in mesas:
+        if mesa.is_occupied and mesa.start_time:
+            tiempo_transcurrido = (current_time - mesa.start_time).total_seconds()
+            mesa.recien_asignada = tiempo_transcurrido < 300
+        else:
+            mesa.recien_asignada = False
+            
     return render_template('worker.html', clientes=clientes, mesas=mesas)
 
 
