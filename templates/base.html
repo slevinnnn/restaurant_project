@@ -6,23 +6,27 @@
   <link rel="stylesheet" href="/static/styles/output.css">
 </head>
 <body>
-<nav class="navbar">
-      <div class="navbar_menu">
-        <img class="logo-navbar" src="{{ url_for('static', filename='images/logo-alleria.png') }}" alt="logo-navbar" />
-        <a href="{{ url_for('trabajador') }}">
-          <img class="img-navbar" src="{{ url_for('static', filename='images/foto-mesa.jpg') }}" alt="Mesas" />
-        </a>
-        <a href="{{ url_for('login') }}">
-          <img class="img-navbar" src="{{ url_for('static', filename='images/icono-usuario.jpg') }}" alt="Estadísticas" />
-        </a>
-        <a href="{{ url_for('clientes_espera') }}">
-          <img class="img-navbar" src="{{ url_for('static', filename='images/icono-lista-2.jpg') }}" alt="Actividades" />
-        </a>
-      </div>
-    </nav>
+  <header class="top-header">
+    <img class="logo-header" src="{{ url_for('static', filename='images/logo-alleria.png') }}" alt="logo-header" />
+    <a href="{{ url_for('logout') }}" class="logout-button">
+      <img class="img-navbar" src="{{ url_for('static', filename='images/icono-usuario.jpg') }}" alt="Logout" />
+    </a>
+  </header>
+  
   <main>
     {% block content %}{% endblock %}
   </main>
+
+  <nav class="navbar">
+    <div class="navbar_menu">
+      <a href="{{ url_for('trabajador') }}" class="nav-icon">
+        <img class="img-navbar" src="{{ url_for('static', filename='images/foto-mesa.jpg') }}" alt="Mesas" />
+      </a>
+      <a href="{{ url_for('clientes_espera') }}" class="nav-icon">
+        <img class="img-navbar" src="{{ url_for('static', filename='images/icono-lista-2.jpg') }}" alt="Lista de espera" />
+      </a>
+    </div>
+  </nav>
   {% block scripts %}{% endblock %}
 </body>
 </html>
