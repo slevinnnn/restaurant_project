@@ -167,7 +167,7 @@ main {
 }
 
 .login-input{
-  @apply  border-card_headline border-2 p-2 rounded-xl w-full my-2 text-gray-900 placeholder:text-card_text focus:outline-none focus:ring-2 focus:ring-card_text focus:border-transparent;
+  @apply  border-card_headline border-2 p-2 rounded-xl w-full my-1 text-gray-900 placeholder:text-card_text focus:outline-none focus:ring-2 focus:ring-card_text focus:border-transparent;
   
 }
 .formulario-inputs {
@@ -190,7 +190,7 @@ main {
   @apply  grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-4 mt-4;
 }
 .mesa {
-  @apply rounded-full p-6 text-white shadow-2xl max-h-[250px] min-w-[300px];
+  @apply bg-[url('/static/images/black-thread-light.png')] rounded-full p-6 text-white shadow-2xl max-h-[250px] min-w-[300px];
 }
 
 /* Contenedor del encabezado de la mesa */
@@ -223,7 +223,7 @@ main {
 }
 
 .mesa-content {
-  @apply space-y-2 text-sm opacity-90;
+  @apply space-y-2 text-sm ;
 }
 
 .mesa-info-row {
@@ -250,7 +250,7 @@ main {
 
 /* Estilos específicos para cada estado de mesa */
 .ocupada { 
-  @apply bg-gradient-to-br from-red-400 to-red-600 border-4 border-red-500;
+  @apply bg-gradient-to-br from-red-400 to-red-600 border-4  border-red-500;
 }
 
 .libre { 

@@ -625,7 +625,7 @@ main {
   }
 }
 .login-input {
-  margin-block: calc(var(--spacing) * 2);
+  margin-block: calc(var(--spacing) * 1);
   width: 100%;
   border-radius: var(--radius-xl);
   border-style: var(--tw-border-style);
@@ -715,6 +715,7 @@ main {
   max-height: 250px;
   min-width: 300px;
   border-radius: calc(infinity * 1px);
+  background-image: url('/static/images/black-thread-light.png');
   padding: calc(var(--spacing) * 6);
   color: var(--color-white);
   --tw-shadow: 0 25px 50px -12px var(--tw-shadow-color, rgb(0 0 0 / 0.25));
@@ -770,7 +771,6 @@ main {
   }
   font-size: var(--text-sm);
   line-height: var(--tw-leading, var(--text-sm--line-height));
-  opacity: 90%;
 }
 .mesa-info-row {
   display: flex;
