@@ -11,6 +11,7 @@ from models import Trabajador
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite3'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SECRET_KEY'] = 'clave_super_secreta_123'
 db.init_app(app)
 migrate = Migrate(app, db)
 
@@ -122,7 +123,7 @@ def estadisticas():
 def registrar_cliente(data):
     cliente_id = data.get("id")
     sid = request.sid
-    cliente = Cliente.query.get(cliente_id)
+    cliente = db.session.get(Cliente, cliente_id)
     if cliente:
         cliente.sid = sid
         db.session.commit()
@@ -191,7 +192,7 @@ def login():
         if trabajador and trabajador.check_password(password):
             session['trabajador_id'] = trabajador.id
             flash('Bienvenido, ' + trabajador.username)
-            return redirect(url_for('worker'))  # o tu dashboard
+            return redirect(url_for('trabajador'))  # o tu dashboard
         else:
             flash('Credenciales incorrectas')
     
