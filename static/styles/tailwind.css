@@ -187,28 +187,115 @@ main {
 }
 
 .grilla-mesas{
-  @apply  grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-4 ;
+  @apply  grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-4 mt-4;
 }
 .mesa {
-  @apply bg-card_background rounded-full p-2.5 mb-2.5 w-full min-h-[150px] bg-[url('/static/images/black-thread-light.png')] flex flex-col justify-between pl-7;
+  @apply rounded-full p-6 text-white shadow-2xl max-h-[250px] min-w-[300px];
 }
 
-.logo-navbar {
-  @apply h-20 w-28 object-contain;
+/* Contenedor del encabezado de la mesa */
+.mesa-header {
+  @apply flex items-center justify-between mb-4;
 }
 
+.mesa-info {
+  @apply flex items-center space-x-3;
+}
 
+.mesa-icon-container {
+  @apply w-12 h-12  rounded-full flex items-center justify-center;
+}
 
+.mesa-icon {
+  @apply text-xl;
+}
+
+.mesa-title {
+  @apply text-2xl font-bold;
+}
+
+.mesa-status {
+  @apply text-sm;
+}
+
+.mesa-indicator {
+  @apply w-4 h-4 rounded-full;
+}
+
+.mesa-content {
+  @apply space-y-2 text-sm opacity-90;
+}
+
+.mesa-info-row {
+  @apply flex items-center space-x-2;
+}
+
+.mesa-info-icon {
+  @apply w-4;
+}
+
+.ocupada .mesa-button {
+  @apply min-w-4/5 mt-4 bg-red-200 text-gray-500 ml-6 rounded-lg py-2 font-medium;
+}
+.libre .mesa-button {
+  @apply min-w-4/5 mt-4 bg-green-200 text-gray-500 ml-6 rounded-lg py-2 font-medium;
+}
+.recien-asignada .mesa-button {
+  @apply min-w-4/5 mt-4 bg-blue-200 text-gray-500 ml-6 rounded-lg py-2 font-medium;
+}
+
+.mesa-countdown {
+  @apply w-full mt-4 bg-white text-gray-500 rounded-lg p-2 text-center text-xs;
+}
+
+/* Estilos específicos para cada estado de mesa */
 .ocupada { 
-  @apply border-4 border-red-500; 
+  @apply bg-gradient-to-br from-red-400 to-red-600 border-4 border-red-500;
 }
 
 .libre { 
-  @apply border-4 border-green-500; 
+  @apply bg-gradient-to-br from-green-400 to-green-600 border-4 border-green-500;
 }
 
 .recien-asignada { 
-  @apply border-4 border-blue-500; 
+  @apply bg-gradient-to-br from-blue-400 to-blue-600 border-4 border-blue-500;
+}
+
+/* Indicadores de estado */
+.ocupada .mesa-icon-container {
+  @apply bg-red-500;
+}
+
+.libre .mesa-icon-container {
+  @apply bg-green-500;
+}
+
+.recien-asignada .mesa-icon-container {
+  @apply bg-blue-500;
+}
+
+.ocupada .mesa-indicator {
+  @apply bg-red-300;
+}
+
+.libre .mesa-indicator {
+  @apply bg-green-300 animate-pulse;
+}
+
+.recien-asignada .mesa-indicator {
+  @apply bg-blue-300 animate-ping;
+}
+
+.ocupada .mesa-status {
+  @apply text-red-100;
+}
+
+.libre .mesa-status {
+  @apply text-green-100;
+}
+
+.recien-asignada .mesa-status {
+  @apply text-blue-100;
 }
 
 .clientes-container{
@@ -241,7 +328,7 @@ main {
 }
 
 .numero_mesa {
-  @apply relative left-40 text-xl text-card_text font-bold;
+  @apply relative left-40 text-xl text-white font-bold;
 }
 
 @layer utilities {

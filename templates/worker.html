@@ -11,16 +11,57 @@
   <div class="grilla-mesas">
     {% for m in mesas %}
       <div class="mesa {% if m.is_occupied %}{% if m.recien_asignada %}recien-asignada{% else %}ocupada{% endif %}{% else %}libre{% endif %}" id="mesa-{{ m.id }}">
-        <p class="numero_mesa"><strong>{{ m.id }}</strong></p>
-        <p>
+        <div class="mesa-header">
+          <div class="mesa-info">
+            <div class="mesa-icon-container">
+              <i class="{% if m.is_occupied %}{% if m.recien_asignada %}fas fa-clock{% else %}fas fa-user-clock{% endif %}{% else %}fas fa-utensils{% endif %} mesa-icon"></i>
+            </div>
+            <div>
+              <h3 class="mesa-title">Mesa #{{ m.id }}</h3>
+              <p class="mesa-status">
+                {% if m.is_occupied %}
+                  {% if m.recien_asignada %}Recién asignada{% else %}Ocupada{% endif %}
+                {% else %}
+                  Disponible
+                {% endif %}
+              </p>
+            </div>
+          </div>
+          <div class="mesa-indicator"></div>
+        </div>
+
+        <div class="mesa-content">
           {% if m.is_occupied %}
-            Cliente ID: {{ m.cliente.id if m.cliente else 'Desconocido' }}<br>
-            Tiempo en uso: <span id="timer-{{ m.id }}">calculando...</span>
+            <div class="mesa-info-row">
+              <i class="fas fa-user mesa-info-icon"></i>
+              <span>Cliente ID: {{ m.cliente.id if m.cliente else 'Desconocido' }}</span>
+            </div>
+            <div class="mesa-info-row">
+              <i class="fas fa-stopwatch mesa-info-icon"></i>
+              <span id="timer-{{ m.id }}">calculando...</span>
+            </div>
+          {% else %}
+            <div class="mesa-info-row">
+              <i class="fas fa-clock mesa-info-icon"></i>
+              <span>Lista para usar</span>
+            </div>
+            <div class="mesa-info-row">
+              <i class="fas fa-users mesa-info-icon"></i>
+              <span>Capacidad: 4 personas</span>
+            </div>
           {% endif %}
-        </p>
-        <button class="btn-accion" data-mesa-id="{{ m.id }}" data-ocupada="{{ 'true' if m.is_occupied else 'false' }}">
-          {% if m.is_occupied %}Desocupar mesa{% else %}Asignar mesa{% endif %}
-        </button>
+        </div>
+
+        {% if m.is_occupied and m.recien_asignada %}
+          <div class="mesa-countdown">
+            <i class="fas fa-info-circle mr-1"></i>
+            Cambiará a rojo en <span id="countdown-{{ m.id }}">5:00</span>
+          </div>
+        {% else %}
+          <button class="mesa-button btn-accion" data-mesa-id="{{ m.id }}" data-ocupada="{{ 'true' if m.is_occupied else 'false' }}">
+            {% if m.is_occupied %}Liberar Mesa{% else %}Asignar Mesa{% endif %}
+          </button>
+        {% endif %}
       </div>
     {% endfor %}
   </div>
@@ -135,13 +176,57 @@
         const ahora = new Date();
         const segundos = Math.floor((ahora - startTime) / 1000);
         
-        // Actualizar el temporizador
+        // Actualizar el temporizador del tiempo de uso
         document.getElementById(`timer-${mesaId}`).innerText = `${horas_minutos_segundos(segundos)}`;
         
-        // Cambiar de recién asignada a ocupada después de 5 minutos
-        if (segundos >= 300 && mesaElement.classList.contains('recien-asignada')) {
-          mesaElement.classList.remove('recien-asignada');
-          mesaElement.classList.add('ocupada');
+        // Si la mesa está recién asignada, actualizar la cuenta regresiva
+        if (mesaElement.classList.contains('recien-asignada')) {
+          const countdownElement = document.getElementById(`countdown-${mesaId}`);
+          if (countdownElement) {
+            const segundosRestantes = 300 - segundos; // 5 minutos = 300 segundos
+            if (segundosRestantes > 0) {
+              const minutos = Math.floor(segundosRestantes / 60);
+              const segs = segundosRestantes % 60;
+              countdownElement.innerText = `${minutos}:${segs.toString().padStart(2, '0')}`;
+            }
+          }
+
+          // Cambiar de recién asignada a ocupada después de 5 minutos
+          if (segundos >= 300) {
+            mesaElement.classList.remove('recien-asignada');
+            mesaElement.classList.add('ocupada');
+            
+            // Actualizar los elementos visuales
+            const iconContainer = mesaElement.querySelector('.w-12');
+            const statusText = mesaElement.querySelector('.text-blue-100');
+            const statusDot = mesaElement.querySelector('.animate-ping');
+            
+            if (iconContainer) iconContainer.classList.replace('bg-blue-500', 'bg-red-500');
+            if (statusText) {
+              statusText.classList.replace('text-blue-100', 'text-red-100');
+              statusText.textContent = 'Ocupada';
+            }
+            if (statusDot) {
+              statusDot.classList.replace('bg-blue-300', 'bg-red-300');
+              statusDot.classList.remove('animate-ping');
+            }
+            
+            // Reemplazar el div de cuenta regresiva con el botón de acción
+            const countdownDiv = mesaElement.querySelector('.text-center');
+            if (countdownDiv) {
+              const button = document.createElement('button');
+              button.className = 'btn-accion w-full mt-4 bg-white text-gray-500 bg-opacity-20 hover:bg-opacity-30 rounded-lg py-2 font-medium transition-all duration-200';
+              button.setAttribute('data-mesa-id', mesaId);
+              button.setAttribute('data-ocupada', 'true');
+              button.textContent = 'Liberar Mesa';
+              button.addEventListener('click', () => {
+                const id = button.dataset.mesaId;
+                const ocupada = button.dataset.ocupada === 'true';
+                accionMesa(id, ocupada);
+              });
+              countdownDiv.parentNode.replaceChild(button, countdownDiv);
+            }
+          }
         }
       }
       
