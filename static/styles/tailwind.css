@@ -200,7 +200,7 @@ main {
 
 
 .ocupada { 
-  @apply border-4 border-red-600; 
+  @apply border-4 border-red-500; 
 }
 
 .libre { 
