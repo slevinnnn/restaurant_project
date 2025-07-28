@@ -38,7 +38,7 @@
             </div>
             <div class="mesa-info-row">
               <i class="fas fa-stopwatch mesa-info-icon"></i>
-              <span id="timer-{{ m.id }}">calculando...</span>
+              <span id="timer-{{ m.id }}" data-start-time="{{ m.start_time.isoformat() if m.start_time else '' }}">calculando...</span>
             </div>
           {% else %}
             <div class="mesa-info-row">
@@ -89,6 +89,37 @@
             const li = document.createElement('li');
             li.textContent = `Cliente #${c.id} (desde ${c.joined_at})`;
             ul.appendChild(li);
+          });
+        });
+    });
+
+    // Escuchar eventos de actualización de mesas
+    socket.on('actualizar_mesas', () => {
+      fetch(window.location.href)
+        .then(response => response.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, 'text/html');
+          const nuevaGrillaMesas = doc.querySelector('.grilla-mesas');
+          const grillaActual = document.querySelector('.grilla-mesas');
+          grillaActual.innerHTML = nuevaGrillaMesas.innerHTML;
+
+          // Reinicializar los event listeners de los botones
+          document.querySelectorAll('.btn-accion').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const id = btn.dataset.mesaId;
+              const ocupada = btn.dataset.ocupada === 'true';
+              accionMesa(id, ocupada);
+            });
+          });
+
+          // Reinicializar los temporizadores para las mesas ocupadas
+          document.querySelectorAll('.mesa').forEach(mesa => {
+            const mesaId = mesa.id.split('-')[1];
+            const startTimeElement = mesa.querySelector('[data-start-time]');
+            if (startTimeElement && mesa.classList.contains('ocupada')) {
+              iniciarTemporizador(mesaId, startTimeElement.dataset.startTime);
+            }
           });
         });
     });
