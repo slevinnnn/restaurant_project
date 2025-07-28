@@ -25,9 +25,28 @@ class UsoMesa(db.Model):
     
 class Trabajador(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(100), nullable=False)
-    username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), nullable=False)
+    username = db.Column(db.String(80), nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint('email', name='uq_trabajador_email'),
+    )
+
+    @staticmethod
+    def validate_email(email):
+        # Verificar formato básico de email
+        if not '@' in email:
+            return False
+        if not email.endswith('.com'):
+            return False
+        # Verificar estructura usuario@dominio.com
+        parts = email.split('@')
+        if len(parts) != 2:
+            return False
+        if not all(parts):  # Verificar que ninguna parte esté vacía
+            return False
+        return True
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)

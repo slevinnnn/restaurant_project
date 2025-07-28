@@ -11,7 +11,9 @@
   <form method="POST" class="formulario">
     <div class="login-formulario" id="formulario_login">
         <div class="formulario-inputs" id="formulario-inputs">
-            <input type="text" class="login-input" id="nombre"  maxlength="80" placeholder="Usuario"><br>
+            <input type="email" class="login-input" id="email" name="email" placeholder="Correo electrónico" required
+                   pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$" 
+                   title="Por favor ingresa un correo válido (ejemplo@dominio.com)"><br>
             <input type="password" name="password" required class="login-input" placeholder="Contraseña"><br>
         </div>
         <button type="submit" class="login-button">Iniciar sesión</button>

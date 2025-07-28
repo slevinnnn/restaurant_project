@@ -147,28 +147,32 @@ def obtener_clientes():
 @app.route('/registro', methods=['GET', 'POST'])
 def registro():
     if request.method == 'POST':
-        nombre = request.form['nombre']
+        email = request.form['email']
         username = request.form['username']
         password = request.form['password']
         confirm_password = request.form['confirm_password']
 
-        if not nombre or not username or not password or not confirm_password:
+        if not email or not username or not password or not confirm_password:
             flash('Todos los campos son requeridos')
+            return redirect(url_for('registro'))
+
+        if not Trabajador.validate_email(email):
+            flash('Por favor ingresa un correo electrónico válido')
             return redirect(url_for('registro'))
 
         if password != confirm_password:
             flash('Las contraseñas no coinciden')
             return redirect(url_for('registro'))
 
-        if Trabajador.query.filter_by(username=username).first():
-            flash('El nombre de usuario ya existe')
+        if Trabajador.query.filter_by(email=email).first():
+            flash('Este correo electrónico ya está registrado')
             return redirect(url_for('registro'))
-
+            
         if len(password) < 6:
             flash('La contraseña debe tener al menos 6 caracteres')
             return redirect(url_for('registro'))
 
-        nuevo = Trabajador(nombre=nombre, username=username)
+        nuevo = Trabajador(email=email, username=username)
         nuevo.set_password(password)
         db.session.add(nuevo)
         db.session.commit()
@@ -180,13 +184,13 @@ def registro():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form['username']
+        email = request.form['email']
         password = request.form['password']
-        trabajador = Trabajador.query.filter_by(username=username).first()
+        trabajador = Trabajador.query.filter_by(email=email).first()
 
         if trabajador and trabajador.check_password(password):
             session['trabajador_id'] = trabajador.id
-            flash('Bienvenido, ' + trabajador.nombre)
+            flash('Bienvenido, ' + trabajador.username)
             return redirect(url_for('worker'))  # o tu dashboard
         else:
             flash('Credenciales incorrectas')
