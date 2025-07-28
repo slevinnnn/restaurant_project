@@ -33,6 +33,7 @@ def cliente():
     db.session.add(nuevo)
     db.session.commit()
     socketio.emit('actualizar_cola')
+    socketio.emit('actualizar_lista_clientes')  # Nuevo evento para actualizar la lista de clientes
     enviar_estado_cola()  # Actualiza el estado de la cola para todos los clientes
     return render_template('client.html', numero=nuevo.id)
 
@@ -93,9 +94,11 @@ def liberar_mesa(mesa_id):
                     "mesa": mesa.id
                 }, to=siguiente.sid)
         socketio.emit('actualizar_mesas')
+        socketio.emit('actualizar_lista_clientes')
         enviar_estado_cola()
         return jsonify({"success": True})
     socketio.emit('actualizar_mesas')
+    socketio.emit('actualizar_lista_clientes')
     enviar_estado_cola()
     return jsonify({"success": False})
 

@@ -70,7 +70,7 @@
       setInterval(updateWaitingTimes, 1000);
       updateWaitingTimes(); // Actualización inicial
 
-      socket.on('actualizar_cola', () => {
+      function actualizarListaClientes() {
         fetch('/clientes')
           .then(res => res.json())
           .then(data => {
@@ -102,7 +102,11 @@
               updateWaitingTimes();
             }
           });
-      });
+      }
+
+      // Escuchar eventos para actualizar la lista de clientes
+      socket.on('actualizar_lista_clientes', actualizarListaClientes);
+      socket.on('actualizar_cola', actualizarListaClientes);
     </script>
 {% endblock %}
 </body>
