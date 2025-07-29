@@ -118,12 +118,12 @@
 
 
     function accionMesa(mesaId, ocupada) {
-      const mensaje = ocupada ? 
+      const mensaje = ocupada=="ocupada" ? 
         "¿Estás seguro de que deseas desocupar esta mesa?" : 
         "¿Estás seguro de que deseas ocupar esta mesa manualmente?";
 
       if (confirm(mensaje)) {
-        if (ocupada) {
+        if (ocupada=="ocupada") {
           fetch(`/liberar_mesa/${mesaId}`, { method: 'POST' })
             .then(res => res.json())
             .then(() => {
@@ -297,7 +297,7 @@
           <button class="w-full px-4 py-3 bg-green-50 hover:bg-green-100 text-green-700 text-sm rounded-xl transition-colors border border-green-200 mb-2">
             ✅ Reservar Mesa
           </button>
-          <button class="w-full px-4 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm rounded-xl transition-colors border border-blue-200">
+          <button onclick="accionMesa(${mesaId}, '${estado}')" class="btn-accion w-full px-4 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm rounded-xl transition-colors border border-blue-200">
             👥 Asignar Mesa
           </button>
         `;
@@ -306,10 +306,10 @@
           <button class="w-full px-4 py-3 bg-green-50 hover:bg-green-100 text-green-700 text-sm rounded-xl transition-colors border border-green-200 mb-2">
             ✅ Reservar Mesa
           </button>
-          <button class="w-full px-4 py-3 bg-orange-50 hover:bg-orange-100 text-orange-700 text-sm rounded-xl transition-colors border border-orange-200 mb-2">
+          <button onclick="accionMesa(${mesaId}, '${estado}')" class="w-full px-4 py-3 bg-orange-50 hover:bg-orange-100 text-orange-700 text-sm rounded-xl transition-colors border border-orange-200 mb-2">
             ⏯️ Desocupar Mesa
           </button>
-          <button class="w-full px-4 py-3 bg-red-50 hover:bg-red-100 text-red-700 text-sm rounded-xl transition-colors border border-red-200">
+          <button onclick="accionMesa(${mesaId},'${estado}')" class="w-full px-4 py-3 bg-red-50 hover:bg-red-100 text-red-700 text-sm rounded-xl transition-colors border border-red-200">
             🔓 Desocupar y Liberar
           </button>
         `;
@@ -380,6 +380,17 @@
     // Inicializar los event listeners cuando se carga la página
     inicializarMesas();
 
+ 
+    function desocuparMesa(mesaId) {
+      fetch(`/liberar_mesa/${mesaId}`, { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            // Cerrar el popover y overlay
+            document.getElementById('popover-overlay').click();
+          }
+        });
+    }
     // Cerrar el popover cuando se hace clic en el overlay
     document.getElementById('popover-overlay').addEventListener('click', () => {
       if (activePopover) {
