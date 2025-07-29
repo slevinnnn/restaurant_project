@@ -332,10 +332,30 @@ main {
 }
 
 @layer utilities {
-
-  
   .formulario-inputs {
     @apply w-full flex flex-col mx-2;
   }
-  
+
+
+
+  @keyframes scaleIn {
+    from {
+      transform: translate(-50%, -20px) scale(0.95);
+      opacity: 0;
+    }
+    to {
+      transform: translate(-50%, 0) scale(1);
+      opacity: 1;
+    }
+  }
+
+  .mesa-popover {
+    @apply fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 
+           bg-card_background-light-1 bg-[url('/static/images/black-thread-light.png')] rounded-2xl shadow-xl 
+           border border-gray-100 p-4 min-w-[300px] z-50 ;
+  }
+
+  .popover-overlay {
+    @apply fixed inset-0   z-40;
+  }
 }

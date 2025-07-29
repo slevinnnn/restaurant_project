@@ -7,10 +7,12 @@
 </head>
 <body>
   {% block content %}
+  <!-- Overlay para cerrar el popover -->
+  <div id="popover-overlay" class="popover-overlay hidden"></div>
 
   <div class="grilla-mesas">
     {% for m in mesas %}
-      <div class="mesa {% if m.is_occupied %}{% if m.recien_asignada %}recien-asignada{% else %}ocupada{% endif %}{% else %}libre{% endif %}" id="mesa-{{ m.id }}">
+      <div class="mesa {% if m.is_occupied %}{% if m.recien_asignada %}recien-asignada{% else %}ocupada{% endif %}{% else %}libre{% endif %}" id="mesa-{{ m.id }}" data-mesa-id="{{ m.id }}" data-estado="{% if m.is_occupied %}{% if m.recien_asignada %}recien-asignada{% else %}ocupada{% endif %}{% else %}libre{% endif %}">
         <div class="mesa-header">
           <div class="mesa-info">
             <div class="mesa-icon-container">
@@ -57,10 +59,6 @@
             <i class="fas fa-info-circle mr-1"></i>
             Cambiará a rojo en <span id="countdown-{{ m.id }}">5:00</span>
           </div>
-        {% else %}
-          <button class="mesa-button btn-accion" data-mesa-id="{{ m.id }}" data-ocupada="{{ 'true' if m.is_occupied else 'false' }}">
-            {% if m.is_occupied %}Liberar Mesa{% else %}Asignar Mesa{% endif %}
-          </button>
         {% endif %}
       </div>
     {% endfor %}
@@ -104,14 +102,8 @@
           const grillaActual = document.querySelector('.grilla-mesas');
           grillaActual.innerHTML = nuevaGrillaMesas.innerHTML;
 
-          // Reinicializar los event listeners de los botones
-          document.querySelectorAll('.btn-accion').forEach(btn => {
-            btn.addEventListener('click', () => {
-              const id = btn.dataset.mesaId;
-              const ocupada = btn.dataset.ocupada === 'true';
-              accionMesa(id, ocupada);
-            });
-          });
+          // Reinicializar los event listeners de las mesas
+          inicializarMesas();
 
           // Reinicializar los temporizadores para las mesas ocupadas
           document.querySelectorAll('.mesa').forEach(mesa => {
@@ -273,6 +265,130 @@
 
     setInterval(actualizarEstadisticas, 5000);
     actualizarEstadisticas();
+
+    // Código para el manejo del popover
+    let activePopover = null;
+
+    function createPopover(mesaId, estado) {
+      const popover = document.createElement('div');
+      popover.className = 'mesa-popover';
+      popover.style.animation = 'popoverScaleIn 0.2s ease-out';
+      popover.id = `popover-${mesaId}`;
+
+      // Agregar estilos de animación
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes popoverScaleIn {
+          from {
+            opacity: 0;
+            transform: translateY(-10px) scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+      `;
+      document.head.appendChild(style);
+      
+      let buttons = '';
+      if (estado === 'libre') {
+        buttons = `
+          <button class="w-full px-4 py-3 bg-green-50 hover:bg-green-100 text-green-700 text-sm rounded-xl transition-colors border border-green-200 mb-2">
+            ✅ Reservar Mesa
+          </button>
+          <button class="w-full px-4 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm rounded-xl transition-colors border border-blue-200">
+            👥 Asignar Mesa
+          </button>
+        `;
+      } else if (estado === 'ocupada') {
+        buttons = `
+          <button class="w-full px-4 py-3 bg-green-50 hover:bg-green-100 text-green-700 text-sm rounded-xl transition-colors border border-green-200 mb-2">
+            ✅ Reservar Mesa
+          </button>
+          <button class="w-full px-4 py-3 bg-orange-50 hover:bg-orange-100 text-orange-700 text-sm rounded-xl transition-colors border border-orange-200 mb-2">
+            ⏯️ Desocupar Mesa
+          </button>
+          <button class="w-full px-4 py-3 bg-red-50 hover:bg-red-100 text-red-700 text-sm rounded-xl transition-colors border border-red-200">
+            🔓 Desocupar y Liberar
+          </button>
+        `;
+      } else if (estado === 'recien-asignada') {
+        buttons = `
+          <button class="w-full px-4 py-3 bg-green-50 hover:bg-green-100 text-green-700 text-sm rounded-xl transition-colors border border-green-200">
+            ✨ Llegó el Comensal
+          </button>
+        `;
+      }
+
+      popover.innerHTML = `
+        <div class="space-y-2 p-4">
+          ${buttons}
+        </div>
+      `;
+
+      return popover;
+    }
+
+    function mostrarPopover(mesaId, estado, mesaElement) {
+      const overlay = document.getElementById('popover-overlay');
+      const existingPopover = document.getElementById(`popover-${mesaId}`);
+      
+      if (existingPopover) {
+        existingPopover.remove();
+        overlay.classList.add('hidden');
+        activePopover = null;
+      } else {
+        // Eliminar cualquier popover existente
+        if (activePopover) {
+          activePopover.remove();
+        }
+        
+        const popover = createPopover(mesaId, estado);
+        document.body.appendChild(popover);
+        
+        // Calcular la posición del popover
+        const mesaRect = mesaElement.getBoundingClientRect();
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        
+        // Posicionar el popover debajo de la mesa
+        popover.style.position = 'absolute';
+        popover.style.top = (mesaRect.bottom + scrollTop + 10) + 'px'; // 10px de margen
+        popover.style.left = (mesaRect.left + (mesaRect.width - popover.offsetWidth) / 2) + 'px';
+        
+        overlay.classList.remove('hidden');
+        activePopover = popover;
+
+        // Detener la propagación del click en el popover
+        popover.addEventListener('click', (e) => {
+          e.stopPropagation();
+        });
+      }
+    }
+
+    // Función para inicializar los event listeners de las mesas
+    function inicializarMesas() {
+      document.querySelectorAll('.mesa').forEach(mesa => {
+        mesa.addEventListener('click', () => {
+          const mesaId = mesa.dataset.mesaId;
+          const estado = mesa.dataset.estado;
+          mostrarPopover(mesaId, estado, mesa);
+        });
+      });
+    }
+
+    // Inicializar los event listeners cuando se carga la página
+    inicializarMesas();
+
+    // Cerrar el popover cuando se hace clic en el overlay
+    document.getElementById('popover-overlay').addEventListener('click', () => {
+      if (activePopover) {
+        activePopover.remove();
+        activePopover = null;
+        document.getElementById('popover-overlay').classList.add('hidden');
+      }
+    });
+
   </script>
   {% endblock %}
   
