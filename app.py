@@ -28,14 +28,20 @@ with app.app_context():
         db.session.commit()
 
 @app.route('/cliente')
-def cliente():
-    nuevo = Cliente()
+def cliente(nombre=None, cantidad_comensales=None):
+    nombre = request.args.get('nombre')
+    cantidad_comensales = request.args.get('cantidad_comensales')
+    nuevo = Cliente(
+        joined_at=datetime.now(),
+        nombre=nombre,
+        cantidad_comensales=cantidad_comensales
+    )
     db.session.add(nuevo)
     db.session.commit()
     socketio.emit('actualizar_cola')
-    socketio.emit('actualizar_lista_clientes')  # Nuevo evento para actualizar la lista de clientes
-    enviar_estado_cola()  # Actualiza el estado de la cola para todos los clientes
-    return render_template('client.html', numero=nuevo.id)
+    socketio.emit('actualizar_lista_clientes')
+    enviar_estado_cola()
+    return render_template('client.html', numero=nuevo.id, nombre=nombre)
 
 @app.route('/trabajador',methods=['GET',"POST"])
 def trabajador():
@@ -146,6 +152,8 @@ def obtener_clientes():
     return jsonify([
         {
             'id': c.id,
+            'nombre': c.nombre,
+            'cantidad_comensales': c.cantidad_comensales,
             'joined_at': c.joined_at.strftime('%Y-%m-%d %H:%M:%S')
         } for c in clientes
     ])
@@ -215,6 +223,14 @@ def logout():
 def clientes_espera():
     clientes = Cliente.query.filter_by(assigned_table=None).order_by(Cliente.joined_at).all()
     return render_template('clientes_espera.html', clientes=clientes)
+
+@app.route('/qr_landing', methods=['GET', 'POST'])
+def qr_landing():
+    if request.method == 'POST':
+        nombre = request.form["nombre"]
+        cantidad_comensales = request.form["cantidad_comensales"]
+        return redirect(url_for('cliente', nombre=nombre, cantidad_comensales=cantidad_comensales))
+    return render_template('qr_landing.html')
 
 if __name__ == "__main__":
     socketio.run(app)

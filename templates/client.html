@@ -4,7 +4,7 @@
   <link rel="stylesheet" href="/static/styles/output.css">
 </head>
 <body>
-  <h1>Bienvenido</h1>
+  <h1>Bienvenido {% if nombre %}{{ nombre }}{% endif %}</h1>
   <p>Tu número en la fila es: <strong>{{ numero }}</strong></p>
   <p id="actualmente">Actualmente atendiendo al número: <strong id="atendiendo"></strong></p>
   <p id="estado">Esperando tu turno...</p>

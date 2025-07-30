@@ -14,6 +14,8 @@
         <thead>
           <tr>
             <th class="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">ID Cliente</th>
+            <th class="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">Nombre</th>
+            <th class="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">Comensales</th>
             <th class="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">Hora de Llegada</th>
             <th class="px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider">Tiempo en Espera</th>
           </tr>
@@ -26,7 +28,9 @@
           {% endif %}
           {% for c in clientes %}
           <tr>
-            <td class="px-6 py-4 whitespace-nowrap font-medium">Cliente #{{ c.id }}</td>
+            <td class="px-6 py-4 whitespace-nowrap font-medium">#{{ c.id }}</td>
+            <td class="px-6 py-4 whitespace-nowrap">{{ c.nombre }}</td>
+            <td class="px-6 py-4 whitespace-nowrap">{{ c.cantidad_comensales }}</td>
             <td class="px-6 py-4 whitespace-nowrap">{{ c.joined_at.strftime('%H:%M:%S') }}</td>
             <td class="px-6 py-4 whitespace-nowrap" id="wait-time-{{ c.id }}">
               <span class="waiting-time" data-joined="{{ c.joined_at.isoformat() }}">Calculando...</span>
@@ -87,11 +91,15 @@
               tbody.appendChild(tr);
             } else {
               data.forEach(c => {
+                console.log(c.joined_at);
+                console.log(Date.parse(c.joined_at));
                 const joinedDate = new Date(c.joined_at);
                 const tr = document.createElement('tr');
                 tr.className = 'border-b border-gray-200 hover:bg-gray-50';
                 tr.innerHTML = `
                   <td class="px-6 py-4 whitespace-nowrap font-medium">Cliente #${c.id}</td>
+                  <td class="px-6 py-4 whitespace-nowrap">${c.nombre || 'No especificado'}</td>
+                  <td class="px-6 py-4 whitespace-nowrap">${c.cantidad_comensales || 'No especificado'}</td>
                   <td class="px-6 py-4 whitespace-nowrap">${joinedDate.toLocaleTimeString()}</td>
                   <td class="px-6 py-4 whitespace-nowrap" id="wait-time-${c.id}">
                     <span class="waiting-time" data-joined="${c.joined_at}">Calculando...</span>

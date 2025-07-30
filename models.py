@@ -6,6 +6,8 @@ db = SQLAlchemy()
 
 class Cliente(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(100), nullable=True)
+    cantidad_comensales = db.Column(db.Integer, nullable=True)
     joined_at = db.Column(db.DateTime, default=datetime.now())
     assigned_table = db.Column(db.Integer, nullable=True)
     sid = db.Column(db.String, nullable=True)  # Socket session ID
