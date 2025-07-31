@@ -98,6 +98,7 @@ def liberar_mesa(mesa_id):
             mesa.is_occupied = True
             mesa.start_time = datetime.now()
             mesa.cliente_id = siguiente.id
+            mesa.llego_comensal = False
             db.session.commit()
             if siguiente.sid:
                 socketio.emit("es_tu_turno", {
@@ -119,6 +120,7 @@ def ocupar_mesa(mesa_id):
         mesa.is_occupied = True
         mesa.start_time = datetime.now()
         mesa.cliente_id = None
+        mesa.llego_comensal = False
         db.session.commit()
         socketio.emit('actualizar_mesas')
         return jsonify({"success": True})

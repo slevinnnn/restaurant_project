@@ -190,7 +190,7 @@ main {
   @apply  grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-4 mt-4;
 }
 .mesa {
-  @apply bg-[url('/static/images/black-thread-light.png')] rounded-full p-6 text-white shadow-2xl max-h-[250px] min-w-[300px];
+  @apply bg-[url('/static/images/black-thread-light.png')] rounded-full p-6 text-white shadow-2xl min-h-[200px] min-w-[300px];
 }
 
 /* Contenedor del encabezado de la mesa */
@@ -199,7 +199,7 @@ main {
 }
 
 .mesa-info {
-  @apply flex items-center space-x-3;
+  @apply flex items-center space-x-3 relative left-2;
 }
 
 .mesa-icon-container {
@@ -223,7 +223,7 @@ main {
 }
 
 .mesa-content {
-  @apply space-y-2 text-sm ;
+  @apply space-y-2 text-sm relative left-3;
 }
 
 .mesa-info-row {

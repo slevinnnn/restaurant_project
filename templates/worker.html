@@ -36,7 +36,11 @@
           {% if m.is_occupied %}
             <div class="mesa-info-row">
               <i class="fas fa-user mesa-info-icon"></i>
-              <span>Cliente ID: {{ m.cliente.id if m.cliente else 'Desconocido' }}</span>
+              <span>{{ m.cliente.nombre if m.cliente else 'Cliente sin nombre' }}</span>
+            </div>
+            <div class="mesa-info-row">
+              <i class="fas fa-users mesa-info-icon"></i>
+              <span>{{ m.cliente.cantidad_comensales if m.cliente else '0' }} comensales</span>
             </div>
             <div class="mesa-info-row">
               <i class="fas fa-stopwatch mesa-info-icon"></i>
