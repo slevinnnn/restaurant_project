@@ -19,6 +19,7 @@ class Mesa(db.Model):
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)
     cliente = db.relationship('Cliente', backref='mesa')
     llego_comensal = db.Column(db.Boolean, default=False)
+    reservada = db.Column(db.Boolean, default=False)
 
 class UsoMesa(db.Model):
     id = db.Column(db.Integer, primary_key=True)
