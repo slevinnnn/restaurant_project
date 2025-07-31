@@ -17,15 +17,19 @@ migrate = Migrate(app, db)
 
 socketio = SocketIO(app)
 
-with app.app_context():
-    db.create_all()
-    mesas_existentes = Mesa.query.count()
-    mesas_deseadas = 8
-    
-    if mesas_existentes < mesas_deseadas:
-        for i in range(mesas_existentes, mesas_deseadas):
-            db.session.add(Mesa())
-        db.session.commit()
+def initialize_tables():
+    with app.app_context():
+        db.create_all()
+        mesas_existentes = db.session.query(db.func.count(Mesa.id)).scalar() or 0
+        mesas_deseadas = 8
+        
+        if mesas_existentes < mesas_deseadas:
+            for i in range(mesas_existentes, mesas_deseadas):
+                db.session.add(Mesa())
+            db.session.commit()
+
+if __name__ == "__main__":
+    initialize_tables()
 
 @app.route('/cliente')
 def cliente(nombre=None, cantidad_comensales=None):
@@ -49,11 +53,10 @@ def trabajador():
     clientes = Cliente.query.filter_by(assigned_table=None).order_by(Cliente.joined_at).all()
     mesas = Mesa.query.all()
     
-    # Calcular qué mesas son recién asignadas (menos de 5 minutos)
+    # Determinar qué mesas están recién asignadas
     for mesa in mesas:
-        if mesa.is_occupied and mesa.start_time:
-            tiempo_transcurrido = (current_time - mesa.start_time).total_seconds()
-            mesa.recien_asignada = tiempo_transcurrido < 300
+        if mesa.is_occupied and not mesa.llego_comensal:
+            mesa.recien_asignada = True
         else:
             mesa.recien_asignada = False
             
@@ -86,6 +89,7 @@ def liberar_mesa(mesa_id):
         mesa.is_occupied = False
         mesa.start_time = None
         mesa.cliente_id = None
+        mesa.llego_comensal = False
         db.session.commit()
 
         siguiente = Cliente.query.filter_by(assigned_table=None).order_by(Cliente.joined_at).first()
@@ -231,6 +235,16 @@ def qr_landing():
         cantidad_comensales = request.form["cantidad_comensales"]
         return redirect(url_for('cliente', nombre=nombre, cantidad_comensales=cantidad_comensales))
     return render_template('qr_landing.html')
+
+@app.route('/confirmar_llegada/<int:mesa_id>', methods=['POST'])
+def confirmar_llegada(mesa_id):
+    mesa = db.session.get(Mesa, mesa_id)
+    if mesa and mesa.is_occupied:
+        mesa.llego_comensal = True
+        db.session.commit()
+        socketio.emit('actualizar_mesas')
+        return jsonify({"success": True})
+    return jsonify({"success": False})
 
 if __name__ == "__main__":
     socketio.run(app)

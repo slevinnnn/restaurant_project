@@ -55,10 +55,6 @@
         </div>
 
         {% if m.is_occupied and m.recien_asignada %}
-          <div class="mesa-countdown">
-            <i class="fas fa-info-circle mr-1"></i>
-            Cambiará a rojo en <span id="countdown-{{ m.id }}">5:00</span>
-          </div>
         {% endif %}
       </div>
     {% endfor %}
@@ -139,6 +135,37 @@
       }
     }
 
+    function llegoComensal(mesaId) {
+        fetch(`/confirmar_llegada/${mesaId}`, { method: 'POST' })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              // Actualizar la mesa a "ocupada"
+              const mesaElement = document.getElementById(`mesa-${mesaId}`);
+              mesaElement.classList.remove('recien-asignada');
+              mesaElement.classList.add('ocupada');
+              mesaElement.dataset.estado = 'ocupada';
+              
+              // Actualizar el ícono
+              const mesaIcon = mesaElement.querySelector('.mesa-icon');
+              if (mesaIcon) {
+                mesaIcon.classList.remove('fa-clock');
+                mesaIcon.classList.add('fa-user-clock');
+              }
+              
+              // Actualizar el texto de estado
+              const statusText = mesaElement.querySelector('.mesa-status');
+              if (statusText) {
+                statusText.textContent = 'Ocupada';
+              }
+
+              // Cerrar el popover y overlay
+              document.getElementById('popover-overlay').click();
+            }
+          });
+
+    }
+
     document.querySelectorAll('.btn-accion').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.dataset.mesaId;
@@ -215,40 +242,35 @@
           }
 
           // Cambiar de recién asignada a ocupada después de 5 minutos
-          if (segundos >= 300) {
+          const tiempo_espera = 300;
+          if (segundos >= tiempo_espera) {
+            // Actualizar las clases principales de la mesa
             mesaElement.classList.remove('recien-asignada');
             mesaElement.classList.add('ocupada');
+            mesaElement.dataset.estado = 'ocupada';
             
-            // Actualizar los elementos visuales
-            const iconContainer = mesaElement.querySelector('.w-12');
-            const statusText = mesaElement.querySelector('.text-blue-100');
-            const statusDot = mesaElement.querySelector('.animate-ping');
+            // Actualizar el ícono
+            const mesaIcon = mesaElement.querySelector('.mesa-icon');
+            if (mesaIcon) {
+              mesaIcon.classList.remove('fa-clock');
+              mesaIcon.classList.add('fa-user-clock');
+            }
             
-            if (iconContainer) iconContainer.classList.replace('bg-blue-500', 'bg-red-500');
+            // Actualizar el texto de estado
+            const statusText = mesaElement.querySelector('.mesa-status');
             if (statusText) {
-              statusText.classList.replace('text-blue-100', 'text-red-100');
               statusText.textContent = 'Ocupada';
             }
-            if (statusDot) {
-              statusDot.classList.replace('bg-blue-300', 'bg-red-300');
-              statusDot.classList.remove('animate-ping');
-            }
             
-            // Reemplazar el div de cuenta regresiva con el botón de acción
-            const countdownDiv = mesaElement.querySelector('.text-center');
-            if (countdownDiv) {
-              const button = document.createElement('button');
-              button.className = 'btn-accion w-full mt-4 bg-white text-gray-500 bg-opacity-20 hover:bg-opacity-30 rounded-lg py-2 font-medium transition-all duration-200';
-              button.setAttribute('data-mesa-id', mesaId);
-              button.setAttribute('data-ocupada', 'true');
-              button.textContent = 'Liberar Mesa';
-              button.addEventListener('click', () => {
-                const id = button.dataset.mesaId;
-                const ocupada = button.dataset.ocupada === 'true';
-                accionMesa(id, ocupada);
-              });
-              countdownDiv.parentNode.replaceChild(button, countdownDiv);
+            // Si hay un popover activo para esta mesa, actualizarlo
+            const activePopoverForMesa = document.getElementById(`popover-${mesaId}`);
+            if (activePopoverForMesa) {
+              const newPopover = createPopover(mesaId, 'ocupada');
+              activePopoverForMesa.innerHTML = newPopover.innerHTML;
             }
+
+            // Emitir evento para actualizar todas las instancias
+            socket.emit('mesa_actualizada');
           }
         }
       }
@@ -315,7 +337,7 @@
         `;
       } else if (estado === 'recien-asignada') {
         buttons = `
-          <button class="w-full px-4 py-3 bg-green-50 hover:bg-green-100 text-green-700 text-sm rounded-xl transition-colors border border-green-200">
+          <button onclick="llegoComensal(${mesaId})" class="w-full px-4 py-3 bg-green-50 hover:bg-green-100 text-green-700 text-sm rounded-xl transition-colors border border-green-200">
             ✨ Llegó el Comensal
           </button>
         `;

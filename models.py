@@ -18,6 +18,7 @@ class Mesa(db.Model):
     start_time = db.Column(db.DateTime, nullable=True)
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)
     cliente = db.relationship('Cliente', backref='mesa')
+    llego_comensal = db.Column(db.Boolean, default=False)
 
 class UsoMesa(db.Model):
     id = db.Column(db.Integer, primary_key=True)
