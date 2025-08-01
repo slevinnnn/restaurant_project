@@ -261,14 +261,6 @@ main {
   @apply bg-gradient-to-br from-blue-400 to-blue-600 border-4 border-blue-500;
 }
 
-.reservada { 
-  @apply bg-gradient-to-br from-purple-400 to-purple-600 border-4 border-purple-500;
-}
-
-.reservada-ocupada { 
-  @apply bg-gradient-to-br from-red-300 to-red-500 border-4 border-purple-500;
-}
-
 /* Indicadores de estado */
 .ocupada .mesa-icon-container {
   @apply bg-red-500;
