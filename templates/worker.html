@@ -12,17 +12,44 @@
 
   <div class="grilla-mesas">
     {% for m in mesas %}
-      <div class="mesa {% if m.is_occupied %}{% if m.recien_asignada %}recien-asignada{% else %}ocupada{% endif %}{% else %}libre{% endif %}" id="mesa-{{ m.id }}" data-mesa-id="{{ m.id }}" data-estado="{% if m.is_occupied %}{% if m.recien_asignada %}recien-asignada{% else %}ocupada{% endif %}{% else %}libre{% endif %}">
+      {% set estado_mesa = 'libre' %}
+      {% if m.reservada and not m.is_occupied %}
+        {% set estado_mesa = 'reservada' %}
+      {% elif m.reservada and m.is_occupied %}
+        {% set estado_mesa = 'reservada-ocupada' %}
+      {% elif m.is_occupied and m.recien_asignada %}
+        {% set estado_mesa = 'recien-asignada' %}
+      {% elif m.is_occupied %}
+        {% set estado_mesa = 'ocupada' %}
+      {% endif %}
+
+      <div class="mesa {{ estado_mesa }}" id="mesa-{{ m.id }}" data-mesa-id="{{ m.id }}" data-estado="{{ estado_mesa }}" data-reservada="{{ m.reservada|lower }}">
         <div class="mesa-header">
           <div class="mesa-info">
             <div class="mesa-icon-container">
-              <i class="{% if m.is_occupied %}{% if m.recien_asignada %}fas fa-clock{% else %}fas fa-user-clock{% endif %}{% else %}fas fa-utensils{% endif %} mesa-icon"></i>
+              {% if m.reservada and not m.is_occupied %}
+                <i class="fas fa-calendar-check mesa-icon"></i>
+              {% elif m.reservada and m.is_occupied %}
+                <i class="fas fa-calendar-times mesa-icon"></i>
+              {% elif m.is_occupied and m.recien_asignada %}
+                <i class="fas fa-clock mesa-icon"></i>
+              {% elif m.is_occupied %}
+                <i class="fas fa-user-clock mesa-icon"></i>
+              {% else %}
+                <i class="fas fa-utensils mesa-icon"></i>
+              {% endif %}
             </div>
             <div>
               <h3 class="mesa-title">Mesa #{{ m.id }}</h3>
               <p class="mesa-status">
-                {% if m.is_occupied %}
-                  {% if m.recien_asignada %}Recién asignada{% else %}Ocupada{% endif %}
+                {% if m.reservada and not m.is_occupied %}
+                  Reservada
+                {% elif m.reservada and m.is_occupied %}
+                  Reservada - Ocupada
+                {% elif m.is_occupied and m.recien_asignada %}
+                  Recién asignada
+                {% elif m.is_occupied %}
+                  Ocupada
                 {% else %}
                   Disponible
                 {% endif %}
@@ -46,20 +73,29 @@
               <i class="fas fa-stopwatch mesa-info-icon"></i>
               <span id="timer-{{ m.id }}" data-start-time="{{ m.start_time.isoformat() if m.start_time else '' }}">calculando...</span>
             </div>
+            {% if m.reservada %}
+            <div class="mesa-info-row">
+              <i class="fas fa-bookmark mesa-info-icon"></i>
+              <span style="color: #8B5CF6;">Mesa Reservada</span>
+            </div>
+            {% endif %}
           {% else %}
             <div class="mesa-info-row">
               <i class="fas fa-clock mesa-info-icon"></i>
-              <span>Lista para usar</span>
+              <span>{% if m.reservada %}Reservada - Lista{% else %}Lista para usar{% endif %}</span>
             </div>
             <div class="mesa-info-row">
               <i class="fas fa-users mesa-info-icon"></i>
               <span>Capacidad: 4 personas</span>
             </div>
+            {% if m.reservada %}
+            <div class="mesa-info-row">
+              <i class="fas fa-bookmark mesa-info-icon"></i>
+              <span style="color: #8B5CF6;">Reservada</span>
+            </div>
+            {% endif %}
           {% endif %}
         </div>
-
-        {% if m.is_occupied and m.recien_asignada %}
-        {% endif %}
       </div>
     {% endfor %}
   </div>
@@ -170,6 +206,65 @@
 
     }
 
+    function reservarMesa(mesaId) {
+      fetch(`/reservar_mesa/${mesaId}`, { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            // Actualizar la mesa a "reservada"
+            const mesaElement = document.getElementById(`mesa-${mesaId}`);
+            mesaElement.classList.add('reservada');
+            mesaElement.dataset.estado = 'reservada';
+            
+            // Actualizar el ícono
+            const mesaIcon = mesaElement.querySelector('.mesa-icon');
+            if (mesaIcon) {
+              mesaIcon.classList.remove('fa-utensils');
+              mesaIcon.classList.add('fa-calendar-check');
+            }
+            
+            // Actualizar el texto de estado
+            const statusText = mesaElement.querySelector('.mesa-status');
+            if (statusText) {
+              statusText.textContent = 'Reservada';
+            }
+
+            // Cerrar el popover y overlay
+            document.getElementById('popover-overlay').click();
+          }
+        });
+    }
+
+    function cancelarReserva(mesaId) {
+      fetch(`/cancelar_reserva/${mesaId}`, { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            // Actualizar la mesa a "libre"
+            const mesaElement = document.getElementById(`mesa-${mesaId}`);
+            mesaElement.classList.remove('reservada');
+            mesaElement.classList.remove('ocupada');
+            mesaElement.dataset.estado = 'libre';
+            
+            // Actualizar el ícono
+            const mesaIcon = mesaElement.querySelector('.mesa-icon');
+            if (mesaIcon) {
+              mesaIcon.classList.remove('fa-calendar-check');
+              mesaIcon.classList.add('fa-utensils');
+            }
+            
+            // Actualizar el texto de estado
+            const statusText = mesaElement.querySelector('.mesa-status');
+            if (statusText) {
+              statusText.textContent = 'Disponible';
+            }
+
+            // Cerrar el popover y overlay
+            document.getElementById('popover-overlay').click();
+          }
+        });
+    }
+
     document.querySelectorAll('.btn-accion').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.dataset.mesaId;
@@ -248,33 +343,7 @@
           // Cambiar de recién asignada a ocupada después de 5 minutos
           const tiempo_espera = 300;
           if (segundos >= tiempo_espera) {
-            // Actualizar las clases principales de la mesa
-            mesaElement.classList.remove('recien-asignada');
-            mesaElement.classList.add('ocupada');
-            mesaElement.dataset.estado = 'ocupada';
-            
-            // Actualizar el ícono
-            const mesaIcon = mesaElement.querySelector('.mesa-icon');
-            if (mesaIcon) {
-              mesaIcon.classList.remove('fa-clock');
-              mesaIcon.classList.add('fa-user-clock');
-            }
-            
-            // Actualizar el texto de estado
-            const statusText = mesaElement.querySelector('.mesa-status');
-            if (statusText) {
-              statusText.textContent = 'Ocupada';
-            }
-            
-            // Si hay un popover activo para esta mesa, actualizarlo
-            const activePopoverForMesa = document.getElementById(`popover-${mesaId}`);
-            if (activePopoverForMesa) {
-              const newPopover = createPopover(mesaId, 'ocupada');
-              activePopoverForMesa.innerHTML = newPopover.innerHTML;
-            }
-
-            // Emitir evento para actualizar todas las instancias
-            socket.emit('mesa_actualizada');
+            llegoComensal(mesaId);
           }
         }
       }
@@ -320,7 +389,7 @@
       let buttons = '';
       if (estado === 'libre') {
         buttons = `
-          <button class="w-full px-4 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm rounded-xl transition-colors border border-blue-200 mb-2">
+          <button onclick="reservarMesa(${mesaId})" class="w-full px-4 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm rounded-xl transition-colors border border-blue-200 mb-2">
             ✅ Reservar Mesa
           </button>
           <button onclick="accionMesa(${mesaId}, '${estado}')" class="btn-accion w-full px-4 py-3 bg-green-50 hover:bg-green-100 text-green-700  text-sm rounded-xl transition-colors border border-green-200">
@@ -332,7 +401,7 @@
           <button onclick="accionMesa(${mesaId}, '${estado}')" class="w-full px-4 py-3 bg-orange-50 hover:bg-orange-100 text-orange-700 text-sm rounded-xl transition-colors border border-orange-200 mb-2">
             ⏯️ Desocupar Mesa
           </button>
-          <button onclick="accionMesa(${mesaId},'${estado}')" class="w-full px-4 py-3 bg-red-50 hover:bg-red-100 text-red-700 text-sm rounded-xl transition-colors border border-red-200">
+          <button  class="w-full px-4 py-3 bg-red-50 hover:bg-red-100 text-red-700 text-sm rounded-xl transition-colors border border-red-200">
             🔓 Desocupar y Reservar
           </button>
         `;
@@ -342,7 +411,25 @@
             ✨ Llegó el Comensal
           </button>
         `;
+      } else if (estado === 'reservada') {
+        buttons = `
+          <button onclick="cancelarReserva(${mesaId})" class="w-full px-4 py-3 bg-red-50 hover:bg-red-100 text-red-700 text-sm rounded-xl transition-colors border border-red-200">
+            ❌ Cancelar Reserva
+          </button>
+          <button onclick="accionMesa(${mesaId},'libre')" class="w-full px-4 py-3 bg-green-50 hover:bg-green-100 text-green-700 text-sm rounded-xl transition-colors border border-green-200">
+            👥 Ocupar Mesa
+        `;
+      } else if (estado === 'reservada-ocupada') {
+        buttons = `
+          <button class="w-full px-4 py-3 bg-red-50 hover:bg-red-100 text-red-700 text-sm rounded-xl transition-colors border border-red-200">
+            ❌ Desocupar y Cancelar reserva
+          </button>
+          <button onclick="accionMesa(${mesaId},'ocupada')" class="w-full px-4 py-3 bg-green-50 hover:bg-green-100 text-green-700 text-sm rounded-xl transition-colors border border-green-200">
+            👥 Desocupar Mesa
+          </button>
+        `;
       }
+
 
       popover.innerHTML = `
         <div class="space-y-2 p-4">

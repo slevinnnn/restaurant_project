@@ -93,7 +93,7 @@ def liberar_mesa(mesa_id):
         db.session.commit()
 
         siguiente = Cliente.query.filter_by(assigned_table=None).order_by(Cliente.joined_at).first()
-        if siguiente:
+        if siguiente and not mesa.reservada:
             siguiente.assigned_table = mesa.id
             mesa.is_occupied = True
             mesa.start_time = datetime.now()
@@ -123,6 +123,41 @@ def ocupar_mesa(mesa_id):
         mesa.llego_comensal = False
         db.session.commit()
         socketio.emit('actualizar_mesas')
+        return jsonify({"success": True})
+    return jsonify({"success": False})
+
+@app.route('/reservar_mesa/<int:mesa_id>', methods=['POST'])
+def reservar_mesa(mesa_id):
+    mesa = db.session.get(Mesa, mesa_id)
+    if mesa and not mesa.reservada:
+        mesa.reservada = True
+        db.session.commit()
+        socketio.emit('actualizar_mesas')
+        return jsonify({"success": True})
+    return jsonify({"success": False})
+
+@app.route('/cancelar_reserva/<int:mesa_id>', methods=['POST'])
+def cancelar_reserva(mesa_id):
+    mesa = db.session.get(Mesa, mesa_id)
+    siguiente = Cliente.query.filter_by(assigned_table=None).order_by(Cliente.joined_at).first()
+    if mesa and mesa.reservada:
+        mesa.reservada = False
+        db.session.commit()
+        if siguiente:
+            siguiente.assigned_table = mesa.id
+            mesa.is_occupied = True
+            mesa.start_time = datetime.now()
+            mesa.cliente_id = siguiente.id
+            mesa.llego_comensal = False
+            db.session.commit()
+            if siguiente.sid:
+                socketio.emit("es_tu_turno", {
+                    "mesa": mesa.id
+                }, to=siguiente.sid)
+        
+        socketio.emit('actualizar_mesas')
+        socketio.emit('actualizar_lista_clientes')
+        enviar_estado_cola()
         return jsonify({"success": True})
     return jsonify({"success": False})
 
