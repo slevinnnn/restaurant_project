@@ -1,3 +1,4 @@
+import os
 from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, emit, join_room
@@ -284,4 +285,6 @@ def confirmar_llegada(mesa_id):
     return jsonify({"success": False})
 
 if __name__ == "__main__":
-    socketio.run(app)
+    import os
+    port = int(os.environ.get('PORT', 5000))
+    socketio.run(app, host='0.0.0.0', port=port, debug=False)
