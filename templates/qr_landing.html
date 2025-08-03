@@ -7,14 +7,23 @@
   <title>Document</title>
 </head>
 <body>
-  <div class="flex flex-col items-center justify-around h-screen">
+  <div class="flex flex-col items-center justify-around p-10">
     <div class="flex flex-col items-center justify-center h-[20vh] gap-y-5 mb-10">
   <p class="mb-10 text-2xl font-bold">Bienvenido a Alleria pizzeria napolitana</p>
   <p class="mb-10 text-xl">Antes de partir necesitamos saber un poco mas de ti</p>
     </div>
   <form method="post" class="login-formulario relative -top-30">
     <input type="text" class="login-input" name="nombre" placeholder="Ingresa tu nombre" required>
-    <input type="text" class="login-input" name="cantidad_comensales" placeholder="Cantidad de comensales" required>
+    <select name="cantidad_comensales" class="login-input" required>
+      <option value="" disabled selected>Selecciona cantidad de comensales</option>
+      <option value="1">1 </option>
+      <option value="2">2 </option>
+      <option value="3">3 </option>
+      <option value="4">4 </option>
+      <option value="5">5 </option>
+      <option value="6">6 </option>
+      <option value="7">7+</option>
+    </select>
     <button type="submit" class="login-button">Enviar</button>
   </form>
   </div>
