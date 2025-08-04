@@ -34,19 +34,36 @@ if __name__ == "__main__":
 
 @app.route('/cliente')
 def cliente(nombre=None, cantidad_comensales=None):
+    # Verificar si ya existe un cliente_id en la sesión
+    if 'cliente_id' in session:
+        # Obtener el cliente existente
+        cliente_existente = Cliente.query.get(session['cliente_id'])
+        if cliente_existente:
+            return render_template('client.html', numero=cliente_existente.id, nombre=cliente_existente.nombre)
+    
+    # Si no hay sesión o el cliente no existe, crear uno nuevo
     nombre = request.args.get('nombre')
     cantidad_comensales = request.args.get('cantidad_comensales')
-    nuevo = Cliente(
-        joined_at=datetime.now(),
-        nombre=nombre,
-        cantidad_comensales=cantidad_comensales
-    )
-    db.session.add(nuevo)
-    db.session.commit()
-    socketio.emit('actualizar_cola')
-    socketio.emit('actualizar_lista_clientes')
-    enviar_estado_cola()
-    return render_template('client.html', numero=nuevo.id, nombre=nombre)
+    
+    # Solo crear nuevo cliente si venimos del formulario
+    if nombre and cantidad_comensales:
+        nuevo = Cliente(
+            joined_at=datetime.now(),
+            nombre=nombre,
+            cantidad_comensales=cantidad_comensales
+        )
+        db.session.add(nuevo)
+        db.session.commit()
+        # Guardar el ID del cliente en la sesión
+        session['cliente_id'] = nuevo.id
+        
+        socketio.emit('actualizar_cola')
+        socketio.emit('actualizar_lista_clientes')
+        enviar_estado_cola()
+        return render_template('client.html', numero=nuevo.id, nombre=nombre)
+    
+    # Si no hay datos del formulario y no hay sesión, redirigir al landing
+    return redirect(url_for('qr_landing'))
 
 @app.route('/trabajador',methods=['GET',"POST"])
 def trabajador():
@@ -101,6 +118,9 @@ def liberar_mesa(mesa_id):
             mesa.cliente_id = siguiente.id
             mesa.llego_comensal = False
             db.session.commit()
+            # Limpiar la sesión si este era el cliente en sesión
+            if 'cliente_id' in session and session['cliente_id'] == siguiente.id:
+                session.pop('cliente_id', None)
             if siguiente.sid:
                 socketio.emit("es_tu_turno", {
                     "mesa": mesa.id
@@ -270,6 +290,10 @@ def clientes_espera():
 
 @app.route('/qr_landing', methods=['GET', 'POST'])
 def qr_landing():
+    # Limpiar la sesión del cliente anterior si existe
+    if 'cliente_id' in session:
+        session.pop('cliente_id', None)
+    
     if request.method == 'POST':
         nombre = request.form["nombre"]
         cantidad_comensales = request.form["cantidad_comensales"]
