@@ -2,6 +2,7 @@ import os
 from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, emit, join_room
+from functools import wraps
 from models import UsoMesa, db, Cliente, Mesa
 from datetime import datetime
 import statistics
@@ -17,6 +18,15 @@ db.init_app(app)
 migrate = Migrate(app, db)
 
 socketio = SocketIO(app)
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'trabajador_id' not in session:
+            flash('Debes iniciar sesión para acceder a esta página')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 def initialize_tables():
     with app.app_context():
@@ -66,6 +76,7 @@ def cliente(nombre=None, cantidad_comensales=None):
     return redirect(url_for('qr_landing'))
 
 @app.route('/trabajador',methods=['GET',"POST"])
+@login_required
 def trabajador():
     current_time = datetime.now()
     clientes = Cliente.query.filter_by(assigned_table=None).order_by(Cliente.joined_at).all()
