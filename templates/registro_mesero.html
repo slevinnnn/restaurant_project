@@ -7,11 +7,13 @@
   <link href="/static/styles/output.css" rel="stylesheet">
 </head>
 <body>
-  <form method="POST" class="formulario">
-    <div class="login-formulario">
-      <div class="formulario-inputs">
-        <input type="email" class="login-input" name="email" placeholder="Correo electrónico" required 
-               pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$" 
+  <div class="fondo-login">
+    <div class="blur-fondo-login">
+      <form method="POST" class="formulario">
+        <div class="login-formulario">
+          <div class="formulario-inputs">
+            <input type="email" class="login-input" name="email" placeholder="Correo electrónico" required
+                   pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
                title="Por favor ingresa un correo válido (ejemplo@dominio.com)"><br>
         <input type="text" class="login-input" name="username" placeholder="Nombre de usuario" required><br>
         <input type="password" class="login-input" name="password" placeholder="Contraseña" required><br>

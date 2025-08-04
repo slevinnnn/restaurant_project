@@ -8,21 +8,25 @@
   <link href="/static/styles/output.css" rel="stylesheet">
 </head>
 <body >
-  <form method="POST" class="formulario">
-    <div class="login-formulario" id="formulario_login">
-        <div class="formulario-inputs" id="formulario-inputs">
-            <input type="email" class="login-input" id="email" name="email" placeholder="Correo electrónico" required
-                   pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$" 
-                   title="Por favor ingresa un correo válido (ejemplo@dominio.com)"><br>
-            <input type="password" name="password" required class="login-input" placeholder="Contraseña"><br>
+  <div class="fondo-login">
+    <div class="blur-fondo-login">
+      <form method="POST" class="formulario">
+        <div class="login-formulario" id="formulario_login">
+            <div class="formulario-inputs" id="formulario-inputs">
+                <input type="email" class="login-input" id="email" name="email" placeholder="Correo electrónico" required
+                      pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$" 
+                      title="Por favor ingresa un correo válido (ejemplo@dominio.com)"><br>
+                <input type="password" name="password" required class="login-input" placeholder="Contraseña"><br>
+            </div>
+            <button type="submit" class="login-button">Iniciar sesión</button>
+            <p class="text-center mt-4 text-sm">
+              ¿No tienes una cuenta? 
+              <a href="{{ url_for('registro') }}" class="text-card_text hover:underline">Regístrate aquí</a>
+            </p>
         </div>
-        <button type="submit" class="login-button">Iniciar sesión</button>
-        <p class="text-center mt-4 text-sm">
-          ¿No tienes una cuenta? 
-          <a href="{{ url_for('registro') }}" class="text-card_text hover:underline">Regístrate aquí</a>
-        </p>
+      </form>
     </div>
-  </form>
+  </div>
 
 </body>
 </html>

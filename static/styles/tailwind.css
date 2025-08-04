@@ -45,7 +45,7 @@ h1, h2, h3, .title-font {
   letter-spacing: 0.05em;
 }
 body {
-  @apply bg-card_background bg-[url('/static/images/black-thread-light.png')] text-card_text flex flex-col items-center justify-center min-h-screen;
+  @apply bg-card_background text-card_text flex flex-col items-center justify-center min-h-screen;
   font-family: 'Industry Inc', sans-serif;
 }
 
@@ -163,19 +163,28 @@ main {
 
 
 .login-button{
-  @apply border-card_text_secondary  hover:bg-card_text hover:text-card_background transition-colors duration-300 border-2 rounded-xl cursor-pointer h-[50px];
+  @apply border-card_text_secondary sm:text-lg  hover:bg-card_text hover:text-card_background transition-colors duration-300 border-2 rounded-xl cursor-pointer h-[50px];
 }
 
 .login-input{
-  @apply  border-card_headline border-2 p-2 rounded-xl w-full my-1 text-gray-900 placeholder:text-card_text focus:outline-none focus:ring-2 focus:ring-card_text focus:border-transparent;
+  @apply  border-card_headline border-2 p-2 sm:text-lg rounded-xl w-full my-1 text-card_text placeholder:text-card_text focus:outline-none focus:ring-2 focus:ring-card_text focus:border-transparent;
   
 }
 .formulario-inputs {
-    @apply w-full flex flex-col p-2;
+    @apply w-full flex flex-col  p-2;
   }
 .formulario {
-  @apply  mt-5 rounded-2xl bg-card_background-light-1 bg-[url('/static/images/black-thread-light.png')] border-3 border-card_background-dark-1 shadow-lg;
+  @apply  mt-5 rounded-2xl bg-card_background-light-1 border-3 border-card_background-dark-1 shadow-lg;
 }
+
+.fondo-login {
+  @apply bg-[url('/static/images/pizzeria.jpg')] bg-cover bg-center h-screen w-screen;
+}
+
+.blur-fondo-login {
+  @apply absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center;
+}
+
 .login-formulario {
     @apply h-100 w-80 p-2 shadow-md flex flex-col justify-around  ;
 }
