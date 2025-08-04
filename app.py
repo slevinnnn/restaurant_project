@@ -5,6 +5,7 @@ from flask_socketio import SocketIO, emit, join_room
 from functools import wraps
 from models import UsoMesa, db, Cliente, Mesa
 from datetime import datetime
+import pytz
 import statistics
 from flask_migrate import Migrate
 from flask import render_template, request, redirect, url_for, session, flash
@@ -27,6 +28,10 @@ def login_required(f):
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
+
+def get_chile_time():
+    santiago_tz = pytz.timezone('America/Santiago')
+    return datetime.now(pytz.UTC).astimezone(santiago_tz)
 
 def initialize_tables():
     with app.app_context():
@@ -58,7 +63,7 @@ def cliente(nombre=None, cantidad_comensales=None):
     # Solo crear nuevo cliente si venimos del formulario
     if nombre and cantidad_comensales:
         nuevo = Cliente(
-            joined_at=datetime.now(),
+            joined_at=get_chile_time(),
             nombre=nombre,
             cantidad_comensales=cantidad_comensales
         )
@@ -78,7 +83,7 @@ def cliente(nombre=None, cantidad_comensales=None):
 @app.route('/trabajador',methods=['GET',"POST"])
 @login_required
 def trabajador():
-    current_time = datetime.now()
+    current_time = get_chile_time()
     clientes = Cliente.query.filter_by(assigned_table=None).order_by(Cliente.joined_at).all()
     mesas = Mesa.query.all()
     
@@ -112,7 +117,7 @@ def enviar_estado_cola():
 def liberar_mesa(mesa_id):
     mesa = db.session.get(Mesa, mesa_id)
     if mesa and mesa.is_occupied:
-        tiempo_usado = (datetime.now() - mesa.start_time).total_seconds() if mesa.start_time else 0
+        tiempo_usado = (get_chile_time() - mesa.start_time).total_seconds() if mesa.start_time else 0
         uso = UsoMesa(mesa_id=mesa.id, duracion=tiempo_usado)
         db.session.add(uso)
         mesa.is_occupied = False
@@ -150,7 +155,7 @@ def ocupar_mesa(mesa_id):
     mesa = db.session.get(Mesa, mesa_id)
     if mesa and not mesa.is_occupied:
         mesa.is_occupied = True
-        mesa.start_time = datetime.now()
+        mesa.start_time = get_chile_time()
         mesa.cliente_id = None
         mesa.llego_comensal = False
         db.session.commit()
