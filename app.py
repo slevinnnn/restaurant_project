@@ -31,7 +31,16 @@ def login_required(f):
 
 def get_chile_time():
     santiago_tz = pytz.timezone('America/Santiago')
-    return datetime.now(pytz.UTC).astimezone(santiago_tz)
+    return datetime.now(santiago_tz)
+
+def convert_to_chile_time(dt):
+    if dt is None:
+        return None
+    santiago_tz = pytz.timezone('America/Santiago')
+    # Si el datetime no tiene zona horaria, asumimos que está en hora de Chile
+    if dt.tzinfo is None:
+        return santiago_tz.localize(dt)
+    return dt.astimezone(santiago_tz)
 
 def initialize_tables():
     with app.app_context():
@@ -117,7 +126,12 @@ def enviar_estado_cola():
 def liberar_mesa(mesa_id):
     mesa = db.session.get(Mesa, mesa_id)
     if mesa and mesa.is_occupied:
-        tiempo_usado = (get_chile_time() - mesa.start_time).total_seconds() if mesa.start_time else 0
+        if mesa.start_time:
+            start_time_chile = convert_to_chile_time(mesa.start_time)
+            current_time_chile = get_chile_time()
+            tiempo_usado = (current_time_chile - start_time_chile).total_seconds()
+        else:
+            tiempo_usado = 0
         uso = UsoMesa(mesa_id=mesa.id, duracion=tiempo_usado)
         db.session.add(uso)
         mesa.is_occupied = False

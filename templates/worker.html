@@ -28,15 +28,15 @@
           <div class="mesa-info">
             <div class="mesa-icon-container">
               {% if m.reservada and not m.is_occupied %}
-                <i class="fas fa-calendar-check mesa-icon"></i>
+                <i class="fas fa-calendar-check mesa-icon text-white"></i>
               {% elif m.reservada and m.is_occupied %}
-                <i class="fas fa-calendar-times mesa-icon"></i>
+                <i class="fas fa-calendar-times mesa-icon text-white"></i>
               {% elif m.is_occupied and m.recien_asignada %}
-                <i class="fas fa-clock mesa-icon"></i>
+                <i class="fas fa-clock mesa-icon text-white"></i>
               {% elif m.is_occupied %}
-                <i class="fas fa-user-clock mesa-icon"></i>
+                <i class="fas fa-user-clock mesa-icon text-white"></i>
               {% else %}
-                <i class="fas fa-utensils mesa-icon"></i>
+                <i class="fas fa-utensils mesa-icon text-white"></i>
               {% endif %}
             </div>
             <div>

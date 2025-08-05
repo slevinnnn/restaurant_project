@@ -37,6 +37,8 @@
   --color-card_text_secondary-light-2: rgb(81,102,124);
   --color-card_text_secondary-dark-1: rgb(23,29,36);
   --color-card_text_secondary-dark-2: rgb(12,15,18);
+
+  --color-background: #fff9eb;
 }
 
 h1, h2, h3, .title-font {
@@ -45,7 +47,7 @@ h1, h2, h3, .title-font {
   letter-spacing: 0.05em;
 }
 body {
-  @apply bg-card_background text-card_text flex flex-col items-center justify-center min-h-screen;
+  @apply  text-card_text flex flex-col items-center justify-center min-h-screen;
   font-family: 'Industry Inc', sans-serif;
 }
 
@@ -77,8 +79,7 @@ main {
   left: 0;
   right: 0;
   height: 10vh;
-  background-color: var(--color-card_background);
-  background-image: url('/static/images/black-thread-light.png');
+
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -102,7 +103,7 @@ main {
   left: 0;
   right: 0;
   height: 12vh;
-  background-color: var(--color-card_background);
+
   border-top: 3px solid var(--color-card_text);
   z-index: 50;
 }
@@ -199,7 +200,7 @@ main {
   @apply  grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-4 mt-4;
 }
 .mesa {
-  @apply bg-[url('/static/images/black-thread-light.png')] rounded-full p-6 text-white shadow-2xl min-h-[200px] min-w-[300px];
+  @apply rounded-2xl p-6 shadow-2xl min-h-[200px] min-w-[300px];
 }
 
 /* Contenedor del encabezado de la mesa */
@@ -259,22 +260,22 @@ main {
 
 /* Estilos específicos para cada estado de mesa */
 .ocupada { 
-  @apply bg-gradient-to-br from-red-400 to-red-600 border-4  border-red-500;
+  @apply border-5  border-red-500 text-red-500;
 }
 
 .libre { 
-  @apply bg-gradient-to-br from-green-400 to-green-600 border-4 border-green-500;
+  @apply  border-5 border-green-500 text-green-500;
 }
 
 .recien-asignada { 
-  @apply bg-gradient-to-br from-blue-400 to-blue-600 border-4 border-blue-500;
+  @apply  border-5 border-blue-500 text-blue-500 ;
 }
 .reservada { 
-  @apply bg-gradient-to-br from-purple-400 to-purple-600 border-4 border-purple-500;
+  @apply  border-5 border-purple-500 text-purple-500;
 }
 
 .reservada-ocupada { 
-  @apply bg-gradient-to-br from-red-300 to-red-500 border-4 border-purple-500;
+  @apply border-5 border-purple-500 text-purple-500;
 }
 
 
@@ -304,15 +305,19 @@ main {
 }
 
 .ocupada .mesa-status {
-  @apply text-red-100;
+  @apply text-red-500;
 }
 
 .libre .mesa-status {
-  @apply text-green-100;
+  @apply text-green-500;
 }
 
 .recien-asignada .mesa-status {
-  @apply text-blue-100;
+  @apply text-blue-500;
+}
+
+.reservada .mesa-icon-container {
+  @apply bg-purple-500;
 }
 
 .clientes-container{
@@ -321,11 +326,11 @@ main {
 
 /* Estilos para la tabla de clientes */
 .clientes-table {
-  @apply min-w-full bg-card_background-light-1 bg-[url('/static/images/black-thread-light.png')] shadow-lg rounded-lg;
+  @apply min-w-full bg-card_background-light-1 shadow-lg rounded-lg;
 }
 
 .clientes-table thead {
-  @apply bg-card_background-light-1 bg-[url('/static/images/black-thread-light.png')] text-card_text font-bold text-xl h-12 rounded-2xl;
+  @apply bg-card_background-light-1 text-card_text font-bold text-xl h-12 rounded-2xl;
 }
 
 .clientes-table th {

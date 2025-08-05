@@ -97,7 +97,7 @@
                 const tr = document.createElement('tr');
                 tr.className = 'border-b border-gray-200 hover:bg-gray-50';
                 tr.innerHTML = `
-                  <td class="px-6 py-4 whitespace-nowrap font-medium">Cliente #${c.id}</td>
+                  <td class="px-6 py-4 whitespace-nowrap font-medium">#${c.id}</td>
                   <td class="px-6 py-4 whitespace-nowrap">${c.nombre || 'No especificado'}</td>
                   <td class="px-6 py-4 whitespace-nowrap">${c.cantidad_comensales || 'No especificado'}</td>
                   <td class="px-6 py-4 whitespace-nowrap">${joinedDate.toLocaleTimeString()}</td>
