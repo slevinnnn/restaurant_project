@@ -13,11 +13,11 @@
       <table class="clientes-table">
         <thead>
           <tr>
-            <th>ID Cliente</th>
-            <th>Nombre</th>
-            <th>Comensales</th>
-            <th>Hora de Llegada</th>
-            <th>Tiempo en Espera</th>
+            <th class="text-xs sm:text-sm">ID</th>
+            <th class="text-xs sm:text-sm">Nombre</th>
+            <th class="text-xs sm:text-sm">Comensales</th>
+            <th class="text-xs sm:text-sm">Llegada</th>
+            <th class="text-xs sm:text-sm">Espera</th>
           </tr>
         </thead>
         <tbody id="clientes-lista">
@@ -28,11 +28,11 @@
           {% endif %}
           {% for c in clientes %}
           <tr>
-            <td >#{{ c.id }}</td>
-            <td >{{ c.nombre }}</td>
-            <td >{{ c.cantidad_comensales }}</td>
-            <td >{{ c.joined_at.strftime('%H:%M:%S') }}</td>
-            <td  id="wait-time-{{ c.id }}">
+            <td class="text-xs sm:text-sm whitespace-nowrap">#{{ c.id }}</td>
+            <td class="text-xs sm:text-sm whitespace-nowrap">{{ c.nombre|truncate(10) }}</td>
+            <td class="text-xs sm:text-sm text-center">{{ c.cantidad_comensales }}</td>
+            <td class="text-xs sm:text-sm whitespace-nowrap">{{ c.joined_at.strftime('%H:%M') }}</td>
+            <td class="text-xs sm:text-sm" id="wait-time-{{ c.id }}">
               <span class="waiting-time" data-joined="{{ c.joined_at.isoformat() }}">Calculando...</span>
             </td>
           </tr>
@@ -97,11 +97,11 @@
                 const tr = document.createElement('tr');
                 tr.className = 'border-b border-gray-200 hover:bg-gray-50';
                 tr.innerHTML = `
-                  <td class="px-6 py-4 whitespace-nowrap font-medium">#${c.id}</td>
-                  <td class="px-6 py-4 whitespace-nowrap">${c.nombre || 'No especificado'}</td>
-                  <td class="px-6 py-4 whitespace-nowrap">${c.cantidad_comensales || 'No especificado'}</td>
-                  <td class="px-6 py-4 whitespace-nowrap">${joinedDate.toLocaleTimeString()}</td>
-                  <td class="px-6 py-4 whitespace-nowrap" id="wait-time-${c.id}">
+                  <td class="text-xs sm:text-sm whitespace-nowrap">#${c.id}</td>
+                  <td class="text-xs sm:text-sm whitespace-nowrap">${(c.nombre || 'Sin nombre').substring(0, 10)}</td>
+                  <td class="text-xs sm:text-sm text-center">${c.cantidad_comensales || '-'}</td>
+                  <td class="text-xs sm:text-sm whitespace-nowrap">${joinedDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
+                  <td class="text-xs sm:text-sm" id="wait-time-${c.id}">
                     <span class="waiting-time" data-joined="${c.joined_at}">Calculando...</span>
                   </td>
                 `;

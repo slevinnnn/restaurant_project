@@ -202,7 +202,7 @@ main {
   @apply grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 mt-4 px-2 sm:px-4;
 }
 .mesa {
-  @apply rounded-2xl p-3 sm:p-4 md:p-6 shadow-2xl min-h-[30px] min-w-[50px] sm:min-h-[60px] sm:min-w-[100px] md:min-h-[160px] lg:min-w-[300px] w-full;
+  @apply rounded-2xl p-3 sm:p-4 md:p-6 shadow-2xl min-h-[30px] min-w-[50px] sm:min-h-[60px] sm:min-w-[100px] md:min-h-[160px] lg:min-w-[300px];
 }
 
 /* Contenedor del encabezado de la mesa */
@@ -322,33 +322,34 @@ main {
   @apply bg-purple-500;
 }
 
-.clientes-container{
-  @apply w-full max-w-5xl mx-auto relative top-10;
+.clientes-container {
+  @apply w-full max-w-5xl mx-auto px-1 sm:px-4 md:px-6 relative top-10;
 }
 
 /* Estilos para la tabla de clientes */
 .clientes-table {
-  @apply min-w-full bg-card_background-light-1 shadow-lg rounded-lg;
+  @apply w-full bg-card_background-light-1 shadow-lg rounded-lg;
+  border-collapse: collapse;
 }
 
 .clientes-table thead {
-  @apply bg-card_background-light-1 text-card_text font-bold text-xl h-12 rounded-2xl;
+  @apply bg-card_background-light-1 text-card_text font-bold h-10 sm:h-12 rounded-2xl;
 }
 
 .clientes-table th {
-  @apply px-6 py-3 text-left text-sm font-semibold uppercase tracking-wider;
+  @apply px-1 sm:px-3 md:px-4 py-1 sm:py-2 text-left font-semibold uppercase;
 }
 
 .clientes-table td {
-  @apply px-6 py-4 whitespace-nowrap;
+  @apply px-1 sm:px-3 md:px-4 py-1 sm:py-2;
 }
 
 .clientes-table tr {
-  @apply  border-card_background-dark-2 border-b-2 hover:bg-card_background-dark-1;
+  @apply border-card_background-dark-2 border-b-2 hover:bg-card_background-dark-1;
 }
 
 .waiting-time {
-  @apply inline-flex items-center justify-center px-2 py-1 text-sm font-medium rounded-full;
+  @apply inline-flex items-center justify-center px-1 sm:px-2 py-1 text-xs sm:text-sm font-medium rounded-full;
 }
 
 .numero_mesa {
