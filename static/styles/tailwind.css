@@ -379,9 +379,35 @@ main {
   }
 
   .mesa-popover {
-    @apply fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 
-           bg-card_background-light-1 bg-[url('/static/images/black-thread-light.png')] rounded-2xl shadow-xl 
-           border border-gray-100 p-4 min-w-[300px] z-50 ;
+    @apply absolute bg-card_background-light-1 rounded-xl shadow-xl 
+           border border-gray-100 p-2 z-50;
+    width: 80%;
+    max-width: 200px;
+  }
+
+  .mesa-popover::before {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 8px solid var(--color-card_background-light-1);
+  }
+
+  .mesa-popover.arriba::before {
+    top: auto;
+    bottom: -8px;
+    border-top: 8px solid var(--color-card_background-light-1);
+    border-bottom: none;
+  }
+
+  .mesa-popover.abajo::before {
+    bottom: auto;
+    top: -8px;
+    border-bottom: 8px solid var(--color-card_background-light-1);
+    border-top: none;
   }
 
   .popover-overlay {

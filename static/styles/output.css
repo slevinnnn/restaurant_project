@@ -231,8 +231,8 @@
   .mt-4 {
     margin-top: calc(var(--spacing) * 4);
   }
-  .mb-2 {
-    margin-bottom: calc(var(--spacing) * 2);
+  .mb-1 {
+    margin-bottom: calc(var(--spacing) * 1);
   }
   .mb-8 {
     margin-bottom: calc(var(--spacing) * 8);
@@ -285,6 +285,9 @@
   .overflow-x-auto {
     overflow-x: auto;
   }
+  .rounded-lg {
+    border-radius: var(--radius-lg);
+  }
   .rounded-xl {
     border-radius: var(--radius-xl);
   }
@@ -326,11 +329,17 @@
   .p-4 {
     padding: calc(var(--spacing) * 4);
   }
+  .px-2 {
+    padding-inline: calc(var(--spacing) * 2);
+  }
   .px-4 {
     padding-inline: calc(var(--spacing) * 4);
   }
   .px-6 {
     padding-inline: calc(var(--spacing) * 6);
+  }
+  .py-2 {
+    padding-block: calc(var(--spacing) * 2);
   }
   .py-3 {
     padding-block: calc(var(--spacing) * 3);
@@ -367,6 +376,10 @@
   .font-medium {
     --tw-font-weight: var(--font-weight-medium);
     font-weight: var(--font-weight-medium);
+  }
+  .font-semibold {
+    --tw-font-weight: var(--font-weight-semibold);
+    font-weight: var(--font-weight-semibold);
   }
   .whitespace-nowrap {
     white-space: nowrap;
@@ -1245,25 +1258,40 @@ main {
     }
   }
   .mesa-popover {
-    position: fixed;
-    top: calc(1/2 * 100%);
-    left: calc(1/2 * 100%);
+    position: absolute;
     z-index: 50;
-    min-width: 300px;
-    --tw-translate-x: calc(calc(1/2 * 100%) * -1);
-    translate: var(--tw-translate-x) var(--tw-translate-y);
-    --tw-translate-y: calc(calc(1/2 * 100%) * -1);
-    translate: var(--tw-translate-x) var(--tw-translate-y);
-    transform: var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-skew-x,) var(--tw-skew-y,);
-    border-radius: var(--radius-2xl);
+    border-radius: var(--radius-xl);
     border-style: var(--tw-border-style);
     border-width: 1px;
     border-color: var(--color-gray-100);
     background-color: var(--color-card_background-light-1);
-    background-image: url('/static/images/black-thread-light.png');
-    padding: calc(var(--spacing) * 4);
+    padding: calc(var(--spacing) * 2);
     --tw-shadow: 0 20px 25px -5px var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 8px 10px -6px var(--tw-shadow-color, rgb(0 0 0 / 0.1));
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+    width: 80%;
+    max-width: 200px;
+  }
+  .mesa-popover::before {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 8px solid var(--color-card_background-light-1);
+  }
+  .mesa-popover.arriba::before {
+    top: auto;
+    bottom: -8px;
+    border-top: 8px solid var(--color-card_background-light-1);
+    border-bottom: none;
+  }
+  .mesa-popover.abajo::before {
+    bottom: auto;
+    top: -8px;
+    border-bottom: 8px solid var(--color-card_background-light-1);
+    border-top: none;
   }
   .popover-overlay {
     position: fixed;
@@ -1419,21 +1447,6 @@ main {
   inherits: false;
   initial-value: 0;
 }
-@property --tw-translate-x {
-  syntax: "*";
-  inherits: false;
-  initial-value: 0;
-}
-@property --tw-translate-y {
-  syntax: "*";
-  inherits: false;
-  initial-value: 0;
-}
-@property --tw-translate-z {
-  syntax: "*";
-  inherits: false;
-  initial-value: 0;
-}
 @keyframes ping {
   75%, 100% {
     transform: scale(2);
@@ -1482,9 +1495,6 @@ main {
       --tw-backdrop-saturate: initial;
       --tw-backdrop-sepia: initial;
       --tw-space-x-reverse: 0;
-      --tw-translate-x: 0;
-      --tw-translate-y: 0;
-      --tw-translate-z: 0;
     }
   }
 }

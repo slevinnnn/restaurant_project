@@ -71,7 +71,10 @@
             </div>
             <div class="mesa-info-row">
               <i class="fas fa-stopwatch mesa-info-icon"></i>
-              <span id="timer-{{ m.id }}" data-start-time="{{ m.start_time.isoformat() if m.start_time else '' }}">calculando...</span>
+              <span>Tiempo: </span>
+              <span id="timer-{{ m.id }}" data-start-time="{{ m.start_time.isoformat() if m.start_time else '' }}" class="font-semibold text-card_text">
+                calculando...
+              </span>
             </div>
             {% if m.reservada %}
             <div class="mesa-info-row">
@@ -136,6 +139,13 @@
           const doc = parser.parseFromString(html, 'text/html');
           const nuevaGrillaMesas = doc.querySelector('.grilla-mesas');
           const grillaActual = document.querySelector('.grilla-mesas');
+          
+          // Limpiar los temporizadores existentes
+          document.querySelectorAll('[id^="timer-"]').forEach(timer => {
+            const mesaId = timer.id.split('-')[1];
+            clearInterval(window['timerInterval-' + mesaId]);
+          });
+          
           grillaActual.innerHTML = nuevaGrillaMesas.innerHTML;
 
           // Reinicializar los event listeners de las mesas
@@ -316,19 +326,37 @@
 
     }
 
+    function limpiarTemporizador(mesaId) {
+      const intervalId = window['timerInterval-' + mesaId];
+      if (intervalId) {
+        clearInterval(intervalId);
+        delete window['timerInterval-' + mesaId];
+      }
+    }
+
     function iniciarTemporizador(mesaId, startTimeStr) {
+      if (!startTimeStr) return; // Si no hay tiempo de inicio, no iniciar el temporizador
+      
+      // Primero limpiar cualquier temporizador existente
+      limpiarTemporizador(mesaId);
+      
       const startTime = new Date(startTimeStr);
       const mesaElement = document.getElementById(`mesa-${mesaId}`);
+      const timerElement = document.getElementById(`timer-${mesaId}`);
+      
+      if (!timerElement) return; // Si no existe el elemento del timer, no continuar
       
       function actualizar() {
         const ahora = new Date();
         const segundos = Math.floor((ahora - startTime) / 1000);
         
         // Actualizar el temporizador del tiempo de uso
-        document.getElementById(`timer-${mesaId}`).innerText = `${horas_minutos_segundos(segundos)}`;
+        if (timerElement) {
+            timerElement.innerText = `${horas_minutos_segundos(segundos)}`;
+        }
         
         // Si la mesa está recién asignada, actualizar la cuenta regresiva
-        if (mesaElement.classList.contains('recien-asignada')) {
+        if (mesaElement && mesaElement.classList.contains('recien-asignada')) {
           const countdownElement = document.getElementById(`countdown-${mesaId}`);
           if (countdownElement) {
             const segundosRestantes = 300 - segundos; // 5 minutos = 300 segundos
@@ -347,7 +375,8 @@
         }
       }
       
-      setInterval(actualizar, 1000);
+      // Guardar la referencia del intervalo para poder limpiarlo después
+      window['timerInterval-' + mesaId] = setInterval(actualizar, 1000);
       actualizar();
     }
 
@@ -375,11 +404,11 @@
         @keyframes popoverScaleIn {
           from {
             opacity: 0;
-            transform: translateY(-10px) scale(0.95);
+            transform: scale(0.95);
           }
           to {
             opacity: 1;
-            transform: translateY(0) scale(1);
+            transform: scale(1);
           }
         }
       `;
@@ -388,35 +417,35 @@
       let buttons = '';
       if (estado === 'libre') {
         buttons = `
-          <button onclick="reservarMesa(${mesaId})" class="w-full px-4 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm rounded-xl transition-colors border border-blue-200 mb-2">
-            ✅ Reservar Mesa
+          <button onclick="reservarMesa(${mesaId})" class="w-full px-2 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs sm:text-sm rounded-lg transition-colors border border-blue-200 mb-1">
+            ✅ Reservar
           </button>
-          <button onclick="accionMesa(${mesaId}, '${estado}')" class="btn-accion w-full px-4 py-3 bg-green-50 hover:bg-green-100 text-green-700  text-sm rounded-xl transition-colors border border-green-200">
-            👥 Asignar Mesa
+          <button onclick="accionMesa(${mesaId}, '${estado}')" class="btn-accion w-full px-2 py-2 bg-green-50 hover:bg-green-100 text-green-700 text-xs sm:text-sm rounded-lg transition-colors border border-green-200">
+            👥 Asignar
           </button>
         `;
       } else if (estado === 'ocupada') {
         buttons = `
-          <button onclick="accionMesa(${mesaId}, '${estado}')" class="w-full px-4 py-3 bg-orange-50 hover:bg-orange-100 text-orange-700 text-sm rounded-xl transition-colors border border-orange-200 mb-2">
-            ⏯️ Desocupar Mesa
+          <button onclick="accionMesa(${mesaId}, '${estado}')" class="w-full px-2 py-2 bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs sm:text-sm rounded-lg transition-colors border border-orange-200 mb-1">
+            ⏯️ Desocupar
           </button>
-          <button  class="w-full px-4 py-3 bg-red-50 hover:bg-red-100 text-red-700 text-sm rounded-xl transition-colors border border-red-200">
-            🔓 Desocupar y Reservar
+          <button class="w-full px-2 py-2 bg-red-50 hover:bg-red-100 text-red-700 text-xs sm:text-sm rounded-lg transition-colors border border-red-200">
+            🔓 Des. y Reservar
           </button>
         `;
       } else if (estado === 'recien-asignada') {
         buttons = `
-          <button onclick="llegoComensal(${mesaId})" class="w-full px-4 py-3 bg-green-50 hover:bg-green-100 text-green-700 text-sm rounded-xl transition-colors border border-green-200">
-            ✨ Llegó el Comensal
+          <button onclick="llegoComensal(${mesaId})" class="w-full px-2 py-2 bg-green-50 hover:bg-green-100 text-green-700 text-xs sm:text-sm rounded-lg transition-colors border border-green-200">
+            ✨ Llegó
           </button>
         `;
       }  else if (estado === 'reservada') {
         buttons = `
-          <button onclick="cancelarReserva(${mesaId})" class="w-full px-4 py-3 bg-red-50 hover:bg-red-100 text-red-700 text-sm rounded-xl transition-colors border border-red-200">
-            ❌ Cancelar Reserva
+          <button onclick="cancelarReserva(${mesaId})" class="w-full px-2 py-2 bg-red-50 hover:bg-red-100 text-red-700 text-xs sm:text-sm rounded-lg transition-colors border border-red-200 mb-1">
+            ❌ Cancelar
           </button>
-          <button onclick="accionMesa(${mesaId},'libre')" class="w-full px-4 py-3 bg-green-50 hover:bg-green-100 text-green-700 text-sm rounded-xl transition-colors border border-green-200">
-            👥 Ocupar Mesa
+          <button onclick="accionMesa(${mesaId},'libre')" class="w-full px-2 py-2 bg-green-50 hover:bg-green-100 text-green-700 text-xs sm:text-sm rounded-lg transition-colors border border-green-200">
+            👥 Ocupar
         `;
       } else if (estado === 'reservada-ocupada') {
         buttons = `
@@ -458,11 +487,32 @@
         // Calcular la posición del popover
         const mesaRect = mesaElement.getBoundingClientRect();
         const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const viewportHeight = window.innerHeight;
         
-        // Posicionar el popover debajo de la mesa
+        // Añadir el popover al DOM temporalmente para obtener sus dimensiones
+        document.body.appendChild(popover);
+        const popoverHeight = popover.offsetHeight;
+        
+        // Decidir si mostrar arriba o abajo
+        const spaceAbove = mesaRect.top;
+        const spaceBelow = viewportHeight - mesaRect.bottom;
+        const showAbove = spaceAbove > spaceBelow && spaceAbove > popoverHeight;
+        
+        // Posicionar el popover
         popover.style.position = 'absolute';
-        popover.style.top = (mesaRect.bottom + scrollTop + 10) + 'px'; // 10px de margen
-        popover.style.left = (mesaRect.left + (mesaRect.width - popover.offsetWidth) / 2) + 'px';
+        if (showAbove) {
+            popover.classList.add('arriba');
+            popover.classList.remove('abajo');
+            popover.style.top = (mesaRect.top + scrollTop - popoverHeight) + 'px';
+        } else {
+            popover.classList.add('abajo');
+            popover.classList.remove('arriba');
+            popover.style.top = (mesaRect.bottom + scrollTop) + 'px';
+        }
+        
+        // Centrar horizontalmente
+        const left = mesaRect.left + (mesaRect.width - popover.offsetWidth) / 2;
+        popover.style.left = Math.max(10, Math.min(document.documentElement.clientWidth - popover.offsetWidth - 10, left)) + 'px';
         
         overlay.classList.remove('hidden');
         activePopover = popover;
