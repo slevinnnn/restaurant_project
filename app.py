@@ -325,9 +325,32 @@ def qr_landing():
         session.pop('cliente_id', None)
     
     if request.method == 'POST':
-        nombre = request.form["nombre"]
-        cantidad_comensales = request.form["cantidad_comensales"]
-        return redirect(url_for('cliente', nombre=nombre, cantidad_comensales=cantidad_comensales))
+        # Manejar datos JSON enviados desde la nueva interfaz
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'No se recibieron datos'}), 400
+        
+        nombre = data.get('nombre', '').strip()
+        cantidad_comensales = data.get('cantidad_comensales')
+        
+        # Validaciones
+        if not nombre:
+            return jsonify({'error': 'El nombre es requerido'}), 400
+        
+        if not cantidad_comensales or int(cantidad_comensales) < 1:
+            return jsonify({'error': 'La cantidad de comensales debe ser válida'}), 400
+        
+        # Convertir a entero para consistencia
+        try:
+            cantidad_comensales = int(cantidad_comensales)
+        except (ValueError, TypeError):
+            return jsonify({'error': 'La cantidad de comensales debe ser un número'}), 400
+        
+        # Retornar la URL de redirección en lugar de hacer redirect directo
+        redirect_url = url_for('cliente', nombre=nombre, cantidad_comensales=cantidad_comensales)
+        return jsonify({'redirect_url': redirect_url})
+    
     return render_template('qr_landing.html')
 
 @app.route('/confirmar_llegada/<int:mesa_id>', methods=['POST'])
