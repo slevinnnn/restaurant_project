@@ -4,6 +4,23 @@
 <head>
   <title>Trabajador</title>
   <link  href="/static/styles/output.css" rel="stylesheet">
+  <style>
+    /* Estilos para el popover superpuesto */
+ 
+
+    /* Animación de entrada */
+    @keyframes popoverScaleIn {
+      from {
+        opacity: 0;
+        transform: scale(0.9);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+  </style>
 </head>
 <body>
   {% block content %}
@@ -109,7 +126,6 @@
 
     {% block scripts %}
 
-
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script>
 
@@ -210,7 +226,7 @@
               }
 
               // Cerrar el popover y overlay
-              document.getElementById('popover-overlay').click();
+              hidePopover();
             }
           });
 
@@ -239,7 +255,7 @@
             }
 
             // Cerrar el popover y overlay
-            document.getElementById('popover-overlay').click();
+            hidePopover();
           }
         });
     }
@@ -269,7 +285,7 @@
             }
 
             // Cerrar el popover y overlay
-            document.getElementById('popover-overlay').click();
+            hidePopover();
           }
         });
     }
@@ -389,148 +405,140 @@
     setInterval(actualizarEstadisticas, 5000);
     actualizarEstadisticas();
 
-    // Código para el manejo del popover
+    // NUEVA IMPLEMENTACIÓN DE POPOVER SUPERPUESTO
     let activePopover = null;
 
     function createPopover(mesaId, estado) {
       const popover = document.createElement('div');
       popover.className = 'mesa-popover';
-      popover.style.animation = 'popoverScaleIn 0.2s ease-out';
       popover.id = `popover-${mesaId}`;
-
-      // Agregar estilos de animación
-      const style = document.createElement('style');
-      style.textContent = `
-        @keyframes popoverScaleIn {
-          from {
-            opacity: 0;
-            transform: scale(0.95);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-      `;
-      document.head.appendChild(style);
       
       let buttons = '';
       if (estado === 'libre') {
         buttons = `
-          <button onclick="reservarMesa(${mesaId})" class="w-full px-2 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs sm:text-sm rounded-lg transition-colors border border-blue-200 mb-1">
+          <button onclick="reservarMesa(${mesaId})" class="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors border border-blue-200">
             ✅ Reservar
           </button>
-          <button onclick="accionMesa(${mesaId}, '${estado}')" class="btn-accion w-full px-2 py-2 bg-green-50 hover:bg-green-100 text-green-700 text-xs sm:text-sm rounded-lg transition-colors border border-green-200">
+          <button onclick="accionMesa(${mesaId}, '${estado}')" class="w-full bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition-colors border border-green-200">
             👥 Asignar
           </button>
         `;
       } else if (estado === 'ocupada') {
         buttons = `
-          <button onclick="accionMesa(${mesaId}, '${estado}')" class="w-full px-2 py-2 bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs sm:text-sm rounded-lg transition-colors border border-orange-200 mb-1">
+          <button onclick="accionMesa(${mesaId}, '${estado}')" class="w-full bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-lg transition-colors border border-orange-200">
             ⏯️ Desocupar
           </button>
-          <button class="w-full px-2 py-2 bg-red-50 hover:bg-red-100 text-red-700 text-xs sm:text-sm rounded-lg transition-colors border border-red-200">
+          <button class="w-full bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-colors border border-red-200">
             🔓 Des. y Reservar
           </button>
         `;
       } else if (estado === 'recien-asignada') {
         buttons = `
-          <button onclick="llegoComensal(${mesaId})" class="w-full px-2 py-2 bg-green-50 hover:bg-green-100 text-green-700 text-xs sm:text-sm rounded-lg transition-colors border border-green-200">
+          <button onclick="llegoComensal(${mesaId})" class="w-full bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition-colors border border-green-200">
             ✨ Llegó
           </button>
         `;
       }  else if (estado === 'reservada') {
         buttons = `
-          <button onclick="cancelarReserva(${mesaId})" class="w-full px-2 py-2 bg-red-50 hover:bg-red-100 text-red-700 text-xs sm:text-sm rounded-lg transition-colors border border-red-200 mb-1">
+          <button onclick="cancelarReserva(${mesaId})" class="w-full bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-colors border border-red-200">
             ❌ Cancelar
           </button>
-          <button onclick="accionMesa(${mesaId},'libre')" class="w-full px-2 py-2 bg-green-50 hover:bg-green-100 text-green-700 text-xs sm:text-sm rounded-lg transition-colors border border-green-200">
+          <button onclick="accionMesa(${mesaId},'libre')" class="w-full bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition-colors border border-green-200">
             👥 Ocupar
+          </button>
         `;
       } else if (estado === 'reservada-ocupada') {
         buttons = `
-          <button class="w-full px-4 py-3 bg-red-50 hover:bg-red-100 text-red-700 text-sm rounded-xl transition-colors border border-red-200">
-            ❌ Desocupar y Cancelar reserva
+          <button class="w-full bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-colors border border-red-200">
+            ❌ Desocupar y Cancelar
           </button>
-          <button onclick="accionMesa(${mesaId},'ocupada')" class="w-full px-4 py-3 bg-green-50 hover:bg-green-100 text-green-700 text-sm rounded-xl transition-colors border border-green-200">
+          <button onclick="accionMesa(${mesaId},'ocupada')" class="w-full bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition-colors border border-green-200">
             👥 Desocupar Mesa
           </button>
         `;
       }
 
-      popover.innerHTML = `
-        <div class="space-y-2 p-4">
-          ${buttons}
-        </div>
-      `;
-
+      popover.innerHTML = buttons;
       return popover;
     }
 
-    function mostrarPopover(mesaId, estado, mesaElement) {
-      const overlay = document.getElementById('popover-overlay');
-      const existingPopover = document.getElementById(`popover-${mesaId}`);
+    function positionPopover(popover, mesaElement) {
+      const mesaRect = mesaElement.getBoundingClientRect();
       
-      if (existingPopover) {
-        existingPopover.remove();
-        overlay.classList.add('hidden');
-        activePopover = null;
-      } else {
-        // Eliminar cualquier popover existente
-        if (activePopover) {
-          activePopover.remove();
-        }
-        
-        const popover = createPopover(mesaId, estado);
-        document.body.appendChild(popover);
-        
-        // Calcular la posición del popover
-        const mesaRect = mesaElement.getBoundingClientRect();
-        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-        const viewportHeight = window.innerHeight;
-        
-        // Añadir el popover al DOM temporalmente para obtener sus dimensiones
-        document.body.appendChild(popover);
-        const popoverHeight = popover.offsetHeight;
-        
-        // Decidir si mostrar arriba o abajo
-        const spaceAbove = mesaRect.top;
-        const spaceBelow = viewportHeight - mesaRect.bottom;
-        const showAbove = spaceAbove > spaceBelow && spaceAbove > popoverHeight;
-        
-        // Posicionar el popover
-        popover.style.position = 'absolute';
-        if (showAbove) {
-            popover.classList.add('arriba');
-            popover.classList.remove('abajo');
-            popover.style.top = (mesaRect.top + scrollTop - popoverHeight) + 'px';
-        } else {
-            popover.classList.add('abajo');
-            popover.classList.remove('arriba');
-            popover.style.top = (mesaRect.bottom + scrollTop) + 'px';
-        }
-        
-        // Centrar horizontalmente
-        const left = mesaRect.left + (mesaRect.width - popover.offsetWidth) / 2;
-        popover.style.left = Math.max(10, Math.min(document.documentElement.clientWidth - popover.offsetWidth - 10, left)) + 'px';
-        
-        overlay.classList.remove('hidden');
-        activePopover = popover;
+      // Calcular el tamaño del popover como porcentaje del elemento mesa
+      const popoverWidth = mesaRect.width * 0.85;
+      const popoverHeight = mesaRect.height * 0.7;
+      
+      // Establecer el tamaño del popover
+      popover.style.width = `${popoverWidth}px`;
+      popover.style.height = `${popoverHeight}px`;
+      
+      // Centrar el popover sobre el elemento mesa
+      const left = mesaRect.left + window.scrollX + (mesaRect.width - popoverWidth) / 2;
+      const top = mesaRect.top + window.scrollY + (mesaRect.height - popoverHeight) / 2;
+      
+      popover.style.top = `${top}px`;
+      popover.style.left = `${left}px`;
+    }
 
-        // Detener la propagación del click en el popover
-        popover.addEventListener('click', (e) => {
-          e.stopPropagation();
-        });
+    function showPopover(mesaId, estado, mesaElement) {
+      const overlay = document.getElementById('popover-overlay');
+      
+      // Si ya hay un popover activo, cerrarlo
+      if (activePopover) {
+        hidePopover();
+      }
+      
+      // Crear y mostrar el nuevo popover
+      const popover = createPopover(mesaId, estado);
+      document.body.appendChild(popover);
+      
+      // Posicionar el popover
+      positionPopover(popover, mesaElement);
+      
+      // Mostrar overlay y popover
+      overlay.classList.remove('hidden');
+      
+      // Usar requestAnimationFrame para asegurar que el DOM se actualice
+      requestAnimationFrame(() => {
+        popover.classList.add('show');
+      });
+      
+      activePopover = popover;
+
+      // Prevenir propagación de clicks dentro del popover
+      popover.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+    }
+
+    function hidePopover() {
+      if (activePopover) {
+        const overlay = document.getElementById('popover-overlay');
+        
+        activePopover.classList.remove('show');
+        overlay.classList.add('hidden');
+        
+        // Remover el popover después de la animación
+        setTimeout(() => {
+          if (activePopover && activePopover.parentNode) {
+            activePopover.parentNode.removeChild(activePopover);
+          }
+          activePopover = null;
+        }, 300);
       }
     }
 
     // Función para inicializar los event listeners de las mesas
     function inicializarMesas() {
       document.querySelectorAll('.mesa').forEach(mesa => {
-        mesa.addEventListener('click', () => {
+        mesa.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          
           const mesaId = mesa.dataset.mesaId;
           const estado = mesa.dataset.estado;
-          mostrarPopover(mesaId, estado, mesa);
+          showPopover(mesaId, estado, mesa);
         });
       });
     }
@@ -538,30 +546,28 @@
     // Inicializar los event listeners cuando se carga la página
     inicializarMesas();
 
- 
+    // Cerrar el popover cuando se hace clic en el overlay
+    document.getElementById('popover-overlay').addEventListener('click', hidePopover);
+
+    // Cerrar popover al cambiar orientación (móviles)
+    window.addEventListener('orientationchange', () => {
+      if (activePopover) {
+        hidePopover();
+      }
+    });
+
     function desocuparMesa(mesaId) {
       fetch(`/liberar_mesa/${mesaId}`, { method: 'POST' })
         .then(res => res.json())
         .then(data => {
           if (data.success) {
-            // Cerrar el popover y overlay
-            document.getElementById('popover-overlay').click();
+            hidePopover();
           }
         });
     }
-    // Cerrar el popover cuando se hace clic en el overlay
-    document.getElementById('popover-overlay').addEventListener('click', () => {
-      if (activePopover) {
-        activePopover.remove();
-        activePopover = null;
-        document.getElementById('popover-overlay').classList.add('hidden');
-      }
-    });
 
   </script>
   {% endblock %}
   
 </body>
 </html>
-
-
