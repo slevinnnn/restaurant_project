@@ -244,10 +244,6 @@ main {
   @apply text-sm;
 }
 
-.mesa-indicator {
-  @apply w-4 h-4 rounded-full;
-}
-
 .mesa-content {
   @apply space-y-2 text-sm relative left-3;
 }
@@ -306,18 +302,6 @@ main {
 
 .recien-asignada .mesa-icon-container {
   @apply bg-blue-500;
-}
-
-.ocupada .mesa-indicator {
-  @apply bg-red-300;
-}
-
-.libre .mesa-indicator {
-  @apply bg-green-300 animate-pulse;
-}
-
-.recien-asignada .mesa-indicator {
-  @apply bg-blue-300 animate-ping;
 }
 
 .ocupada .mesa-status {
@@ -490,57 +474,92 @@ main {
     }
 }
 
-/* Estilos para mesas según capacidad */
-.mesa[data-capacidad="2"] .mesa-header::after {
-  content: "👥 2p";
-  position: absolute;
-  top: -5px;
-  right: -5px;
-  background: #3498db;
-  color: white;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 10px;
-  font-weight: bold;
+/* Estilos para mesas según capacidad - Responsivo */
+@media (min-width: 641px) {
+  /* Desktop: Indicador en esquina superior derecha */
+  .mesa[data-capacidad="2"] .mesa-header::after {
+    content: "👥 2p";
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #3498db;
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: bold;
+  }
+
+  .mesa[data-capacidad="4"] .mesa-header::after {
+    content: "👥 4p";
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #27ae60;
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: bold;
+  }
+
+  .mesa[data-capacidad="6"] .mesa-header::after {
+    content: "👥 6p";
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #f39c12;
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: bold;
+  }
+
+  .mesa[data-capacidad="8"] .mesa-header::after {
+    content: "👥 8p";
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #e74c3c;
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: bold;
+  }
+  
+  /* Ocultar indicador inline en desktop */
+  .capacidad-mobile {
+    display: none;
+  }
 }
 
-.mesa[data-capacidad="4"] .mesa-header::after {
-  content: "👥 4p";
-  position: absolute;
-  top: -5px;
-  right: -5px;
-  background: #27ae60;
-  color: white;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 10px;
-  font-weight: bold;
-}
-
-.mesa[data-capacidad="6"] .mesa-header::after {
-  content: "👥 6p";
-  position: absolute;
-  top: -5px;
-  right: -5px;
-  background: #f39c12;
-  color: white;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 10px;
-  font-weight: bold;
-}
-
-.mesa[data-capacidad="8"] .mesa-header::after {
-  content: "👥 8p";
-  position: absolute;
-  top: -5px;
-  right: -5px;
-  background: #e74c3c;
-  color: white;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 10px;
-  font-weight: bold;
+/* Mobile: Sin indicador ::after, se mostrará inline en el HTML */
+@media (max-width: 640px) {
+  .mesa[data-capacidad="2"] .mesa-header::after,
+  .mesa[data-capacidad="4"] .mesa-header::after,
+  .mesa[data-capacidad="6"] .mesa-header::after,
+  .mesa[data-capacidad="8"] .mesa-header::after {
+    display: none;
+  }
+  
+  /* Estilos para indicador inline en móviles */
+  .capacidad-mobile {
+    display: inline-block;
+    margin-left: 6px;
+    font-size: 9px;
+    padding: 1px 4px;
+    border-radius: 8px;
+    font-weight: bold;
+    color: white;
+    vertical-align: middle;
+  }
+  
+  .capacidad-mobile.cap-2 { background: #3498db; }
+  .capacidad-mobile.cap-4 { background: #27ae60; }
+  .capacidad-mobile.cap-6 { background: #f39c12; }
+  .capacidad-mobile.cap-8 { background: #e74c3c; }
 }
 
 .mesa-header {

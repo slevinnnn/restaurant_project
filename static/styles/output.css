@@ -10,7 +10,6 @@
     --color-red-50: oklch(97.1% 0.013 17.38);
     --color-red-100: oklch(93.6% 0.032 17.717);
     --color-red-200: oklch(88.5% 0.062 18.334);
-    --color-red-300: oklch(80.8% 0.114 19.571);
     --color-red-500: oklch(63.7% 0.237 25.331);
     --color-red-700: oklch(50.5% 0.213 27.518);
     --color-orange-50: oklch(98% 0.016 73.684);
@@ -20,14 +19,12 @@
     --color-green-50: oklch(98.2% 0.018 155.826);
     --color-green-100: oklch(96.2% 0.044 156.743);
     --color-green-200: oklch(92.5% 0.084 155.995);
-    --color-green-300: oklch(87.1% 0.15 154.449);
     --color-green-500: oklch(72.3% 0.219 149.579);
     --color-green-600: oklch(62.7% 0.194 149.214);
     --color-green-700: oklch(52.7% 0.154 150.069);
     --color-blue-50: oklch(97% 0.014 254.604);
     --color-blue-100: oklch(93.2% 0.032 255.585);
     --color-blue-200: oklch(88.2% 0.059 254.128);
-    --color-blue-300: oklch(80.9% 0.105 251.813);
     --color-blue-500: oklch(62.3% 0.214 259.815);
     --color-blue-700: oklch(48.8% 0.243 264.376);
     --color-purple-50: oklch(97.7% 0.014 308.299);
@@ -61,6 +58,8 @@
     --text-4xl--line-height: calc(2.5 / 2.25);
     --text-6xl: 3.75rem;
     --text-6xl--line-height: 1;
+    --text-8xl: 6rem;
+    --text-8xl--line-height: 1;
     --font-weight-medium: 500;
     --font-weight-semibold: 600;
     --font-weight-bold: 700;
@@ -69,8 +68,6 @@
     --radius-2xl: 1rem;
     --ease-out: cubic-bezier(0, 0, 0.2, 1);
     --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
-    --animate-ping: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
-    --animate-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     --blur-sm: 8px;
     --default-transition-duration: 150ms;
     --default-transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
@@ -288,9 +285,6 @@
   .hidden {
     display: none;
   }
-  .table {
-    display: table;
-  }
   .size-15 {
     width: calc(var(--spacing) * 15);
     height: calc(var(--spacing) * 15);
@@ -301,14 +295,8 @@
   .max-w-md {
     max-width: var(--container-md);
   }
-  .border-collapse {
-    border-collapse: collapse;
-  }
   .transform {
     transform: var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-skew-x,) var(--tw-skew-y,);
-  }
-  .resize {
-    resize: both;
   }
   .grid-cols-4 {
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -426,13 +414,9 @@
   .text-center {
     text-align: center;
   }
-  .text-4xl {
-    font-size: var(--text-4xl);
-    line-height: var(--tw-leading, var(--text-4xl--line-height));
-  }
-  .text-6xl {
-    font-size: var(--text-6xl);
-    line-height: var(--tw-leading, var(--text-6xl--line-height));
+  .text-8xl {
+    font-size: var(--text-8xl);
+    line-height: var(--tw-leading, var(--text-8xl--line-height));
   }
   .text-lg {
     font-size: var(--text-lg);
@@ -493,9 +477,6 @@
   }
   .text-white {
     color: var(--color-white);
-  }
-  .underline {
-    text-decoration-line: underline;
   }
   .opacity-50 {
     opacity: 50%;
@@ -1094,11 +1075,6 @@ main {
   font-size: var(--text-sm);
   line-height: var(--tw-leading, var(--text-sm--line-height));
 }
-.mesa-indicator {
-  height: calc(var(--spacing) * 4);
-  width: calc(var(--spacing) * 4);
-  border-radius: calc(infinity * 1px);
-}
 .mesa-content {
   position: relative;
   left: calc(var(--spacing) * 3);
@@ -1204,17 +1180,6 @@ main {
 }
 .recien-asignada .mesa-icon-container {
   background-color: var(--color-blue-500);
-}
-.ocupada .mesa-indicator {
-  background-color: var(--color-red-300);
-}
-.libre .mesa-indicator {
-  animation: var(--animate-pulse);
-  background-color: var(--color-green-300);
-}
-.recien-asignada .mesa-indicator {
-  animation: var(--animate-ping);
-  background-color: var(--color-blue-300);
 }
 .ocupada .mesa-status {
   color: var(--color-red-500);
@@ -1453,53 +1418,85 @@ main {
     }
   }
 }
-.mesa[data-capacidad="2"] .mesa-header::after {
-  content: "👥 2p";
-  position: absolute;
-  top: -5px;
-  right: -5px;
-  background: #3498db;
-  color: white;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 10px;
-  font-weight: bold;
+@media (min-width: 641px) {
+  .mesa[data-capacidad="2"] .mesa-header::after {
+    content: "👥 2p";
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #3498db;
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: bold;
+  }
+  .mesa[data-capacidad="4"] .mesa-header::after {
+    content: "👥 4p";
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #27ae60;
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: bold;
+  }
+  .mesa[data-capacidad="6"] .mesa-header::after {
+    content: "👥 6p";
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #f39c12;
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: bold;
+  }
+  .mesa[data-capacidad="8"] .mesa-header::after {
+    content: "👥 8p";
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #e74c3c;
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: bold;
+  }
+  .capacidad-mobile {
+    display: none;
+  }
 }
-.mesa[data-capacidad="4"] .mesa-header::after {
-  content: "👥 4p";
-  position: absolute;
-  top: -5px;
-  right: -5px;
-  background: #27ae60;
-  color: white;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 10px;
-  font-weight: bold;
-}
-.mesa[data-capacidad="6"] .mesa-header::after {
-  content: "👥 6p";
-  position: absolute;
-  top: -5px;
-  right: -5px;
-  background: #f39c12;
-  color: white;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 10px;
-  font-weight: bold;
-}
-.mesa[data-capacidad="8"] .mesa-header::after {
-  content: "👥 8p";
-  position: absolute;
-  top: -5px;
-  right: -5px;
-  background: #e74c3c;
-  color: white;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 10px;
-  font-weight: bold;
+@media (max-width: 640px) {
+  .mesa[data-capacidad="2"] .mesa-header::after, .mesa[data-capacidad="4"] .mesa-header::after, .mesa[data-capacidad="6"] .mesa-header::after, .mesa[data-capacidad="8"] .mesa-header::after {
+    display: none;
+  }
+  .capacidad-mobile {
+    display: inline-block;
+    margin-left: 6px;
+    font-size: 9px;
+    padding: 1px 4px;
+    border-radius: 8px;
+    font-weight: bold;
+    color: white;
+    vertical-align: middle;
+  }
+  .capacidad-mobile.cap-2 {
+    background: #3498db;
+  }
+  .capacidad-mobile.cap-4 {
+    background: #27ae60;
+  }
+  .capacidad-mobile.cap-6 {
+    background: #f39c12;
+  }
+  .capacidad-mobile.cap-8 {
+    background: #e74c3c;
+  }
 }
 .mesa-header {
   position: relative;
@@ -1680,17 +1677,6 @@ main {
   syntax: "*";
   inherits: false;
   initial-value: 0;
-}
-@keyframes ping {
-  75%, 100% {
-    transform: scale(2);
-    opacity: 0;
-  }
-}
-@keyframes pulse {
-  50% {
-    opacity: 0.5;
-  }
 }
 @layer properties {
   @supports ((-webkit-hyphens: none) and (not (margin-trim: inline))) or ((-moz-orient: inline) and (not (color:rgb(from red r g b)))) {

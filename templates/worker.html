@@ -57,7 +57,10 @@
               {% endif %}
             </div>
             <div>
-              <h3 class="mesa-title">Mesa #{{ m.id }}</h3>
+              <h3 class="mesa-title">
+                Mesa #{{ m.id }}
+                <span class="capacidad-mobile cap-{{ m.capacidad }}">👥 {{ m.capacidad }}p</span>
+              </h3>
               <p class="mesa-status">
                 {% if m.reservada and not m.is_occupied %}
                   Reservada
@@ -73,7 +76,6 @@
               </p>
             </div>
           </div>
-          <div class="mesa-indicator"></div>
         </div>
 
         <div class="mesa-content">
