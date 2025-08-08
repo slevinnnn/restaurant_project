@@ -4,11 +4,11 @@
   <link rel="stylesheet" href="/static/styles/output.css">
 </head>
 <body>
-  <h1>Bienvenido {% if nombre %}{{ nombre }}{% endif %}</h1>
-  <p id="actualmente">Actualmente atendiendo al número: <strong id="atendiendo"></strong></p>
-  <p id="tu-numero">Tu número en la fila es: <strong>{{ numero }}</strong></p>
+  <p class="msj-bienvenida">Bienvenid@ {% if nombre %}{{ nombre }}{% endif %}</p>
+  <p class="msj-actualmente" id="actualmente">Actualmente atendiendo al número: <strong id="atendiendo"></strong></p>
+  <p class="msj-tu-numero" id="tu-numero">Tu número en la fila es: <strong>{{ numero }}</strong></p>
 
-  <p id="estado">Esperando tu turno...</p>
+  <p class="msj-estado" id="estado">Esperando tu turno...</p>
 
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <script>
@@ -20,7 +20,7 @@
     });
 
     socket.on("es_tu_turno", (data) => {
-      document.getElementById("estado").className = "font-bold text-2xl";
+      document.getElementById("estado").className = "font-bold text-6xl";
       document.getElementById("estado").innerText = "¡Es tu turno! Ve a la mesa " + data.mesa;
       document.getElementById("actualmente").style.display = "none";
       document.getElementById("atendiendo").style.display = "none";

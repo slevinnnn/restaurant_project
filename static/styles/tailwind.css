@@ -163,7 +163,21 @@ main {
   font-weight: 500;
 }
 
+.msj-bienvenida{
+  @apply text-6xl font-bold text-card_text mb-4;
+}
 
+.msj-actualmente{
+  @apply text-4xl text-card_text mb-2;
+}
+
+.msj-tu-numero{
+  @apply text-4xl text-card_text mb-2;
+}
+
+.msj-estado{
+  @apply text-4xl font-bold text-card_text mb-2;
+}
 
 .login-button{
   @apply border-card_text_secondary sm:text-lg  hover:bg-card_text hover:text-card_background transition-colors duration-300 border-2 rounded-xl cursor-pointer h-[50px];
