@@ -256,37 +256,43 @@ def obtener_clientes():
 @app.route('/registro', methods=['GET', 'POST'])
 def registro():
     if request.method == 'POST':
-        email = request.form['email']
-        username = request.form['username']
-        password = request.form['password']
-        confirm_password = request.form['confirm_password']
+        try:
+            email = request.form['email']
+            username = request.form['username']
+            password = request.form['password']
+            confirm_password = request.form['confirm_password']
 
-        if not email or not username or not password or not confirm_password:
-            flash('Todos los campos son requeridos')
-            return redirect(url_for('registro'))
+            if not email or not username or not password or not confirm_password:
+                flash('Todos los campos son requeridos')
+                return redirect(url_for('registro'))
 
-        if not Trabajador.validate_email(email):
-            flash('Por favor ingresa un correo electrónico válido')
-            return redirect(url_for('registro'))
+            if not Trabajador.validate_email(email):
+                flash('Por favor ingresa un correo electrónico válido')
+                return redirect(url_for('registro'))
 
-        if password != confirm_password:
-            flash('Las contraseñas no coinciden')
-            return redirect(url_for('registro'))
+            if password != confirm_password:
+                flash('Las contraseñas no coinciden')
+                return redirect(url_for('registro'))
 
-        if Trabajador.query.filter_by(email=email).first():
-            flash('Este correo electrónico ya está registrado')
-            return redirect(url_for('registro'))
+            if Trabajador.query.filter_by(email=email).first():
+                flash('Este correo electrónico ya está registrado')
+                return redirect(url_for('registro'))
+                
+            if len(password) < 6:
+                flash('La contraseña debe tener al menos 6 caracteres')
+                return redirect(url_for('registro'))
+
+            nuevo = Trabajador(email=email, username=username)
+            nuevo.set_password(password)
+            db.session.add(nuevo)
+            db.session.commit()
+            flash('Registro exitoso, ahora inicia sesión')
+            return redirect(url_for('login'))
             
-        if len(password) < 6:
-            flash('La contraseña debe tener al menos 6 caracteres')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al registrar usuario: {str(e)}')
             return redirect(url_for('registro'))
-
-        nuevo = Trabajador(email=email, username=username)
-        nuevo.set_password(password)
-        db.session.add(nuevo)
-        db.session.commit()
-        flash('Registro exitoso, ahora inicia sesión')
-        return redirect(url_for('login'))
 
     return render_template('registro_mesero.html')
 

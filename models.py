@@ -39,18 +39,10 @@ class Trabajador(db.Model):
 
     @staticmethod
     def validate_email(email):
-        # Verificar formato básico de email
-        if not '@' in email:
-            return False
-        if not email.endswith('.com'):
-            return False
-        # Verificar estructura usuario@dominio.com
-        parts = email.split('@')
-        if len(parts) != 2:
-            return False
-        if not all(parts):  # Verificar que ninguna parte esté vacía
-            return False
-        return True
+        import re
+        # Patrón de regex más completo para validar emails
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        return re.match(pattern, email) is not None
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
