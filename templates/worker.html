@@ -40,7 +40,7 @@
         {% set estado_mesa = 'ocupada' %}
       {% endif %}
 
-      <div class="mesa {{ estado_mesa }}" id="mesa-{{ m.id }}" data-mesa-id="{{ m.id }}" data-estado="{{ estado_mesa }}" data-reservada="{{ m.reservada|lower }}">
+      <div class="mesa {{ estado_mesa }}" id="mesa-{{ m.id }}" data-mesa-id="{{ m.id }}" data-estado="{{ estado_mesa }}" data-reservada="{{ m.reservada|lower }}" data-capacidad="{{ m.capacidad }}">
         <div class="mesa-header">
           <div class="mesa-info">
             <div class="mesa-icon-container">
@@ -106,12 +106,12 @@
             </div>
             <div class="mesa-info-row">
               <i class="fas fa-users mesa-info-icon"></i>
-              <span>Capacidad: 4 personas</span>
+              <span>Capacidad: {{ m.capacidad }} personas</span>
             </div>
             {% if m.reservada %}
             <div class="mesa-info-row">
               <i class="fas fa-bookmark mesa-info-icon"></i>
-              <span style="color: #8B5CF6;">Reservada</span>
+              <span style="color: #8B5CF6;">Mesa Reservada</span>
             </div>
             {% endif %}
           {% endif %}
@@ -178,6 +178,125 @@
         });
     });
 
+    // Escuchar evento de cliente que necesita múltiples mesas
+    socket.on('cliente_necesita_multiples_mesas', (data) => {
+      mostrarNotificacionMultiplesMesas(data);
+    });
+
+
+    function mostrarNotificacionMultiplesMesas(data) {
+      // Crear una notificación modal para múltiples mesas
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.8);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      `;
+      
+      const contenido = document.createElement('div');
+      contenido.style.cssText = `
+        background: white;
+        padding: 30px;
+        border-radius: 15px;
+        max-width: 500px;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      `;
+      
+      contenido.innerHTML = `
+        <h3 style="color: #e74c3c; margin-bottom: 20px;">⚠️ Cliente Necesita Múltiples Mesas</h3>
+        <p style="margin-bottom: 15px;"><strong>Cliente:</strong> ${data.cliente_nombre}</p>
+        <p style="margin-bottom: 15px;"><strong>Comensales:</strong> ${data.cantidad_comensales}</p>
+        <p style="margin-bottom: 20px;"><strong>Mesas reservadas:</strong> ${data.mesas_reservadas.join(', ')}</p>
+        <div style="display: flex; gap: 10px; justify-content: center;">
+          <button onclick="asignarClienteMultiple(${data.cliente_id})" 
+                  style="background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+            ✅ Asignar Mesas
+          </button>
+          <button onclick="cerrarModal()" 
+                  style="background: #95a5a6; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+            ❌ Cancelar
+          </button>
+        </div>
+      `;
+      
+      modal.appendChild(contenido);
+      document.body.appendChild(modal);
+      
+      // Guardar referencia para poder cerrar
+      window.modalActual = modal;
+    }
+    
+    function cerrarModal() {
+      if (window.modalActual) {
+        document.body.removeChild(window.modalActual);
+        window.modalActual = null;
+      }
+    }
+
+    function cambiarCapacidad(mesaId) {
+      const nuevaCapacidad = prompt("Ingresa la nueva capacidad para esta mesa (1-20 personas):");
+      
+      if (nuevaCapacidad === null) return; // Usuario canceló
+      
+      const capacidad = parseInt(nuevaCapacidad);
+      if (isNaN(capacidad) || capacidad < 1 || capacidad > 20) {
+        alert("Por favor ingresa un número válido entre 1 y 20");
+        return;
+      }
+      
+      fetch(`/cambiar_capacidad/${mesaId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ capacidad: capacidad })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert(`Capacidad cambiada exitosamente a ${data.nueva_capacidad} personas`);
+          // Cerrar el popover
+          document.getElementById('popover-overlay').click();
+        } else {
+          alert(`Error: ${data.error}`);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Error al cambiar la capacidad');
+      });
+    }
+
+    function asignarClienteMultiple(clienteId) {
+      fetch(`/asignar_cliente_multiple/${clienteId}`, { 
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          cerrarModal();
+          // Mostrar confirmación
+          alert(`Cliente asignado exitosamente a las mesas: ${data.mesas_totales.join(', ')}`);
+        } else {
+          alert(`Error: ${data.error}`);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Error al asignar cliente');
+      });
+    }
 
     function accionMesa(mesaId, ocupada) {
       const mensaje = ocupada=="ocupada" ? 
@@ -429,6 +548,9 @@
           <button onclick="accionMesa(${mesaId}, '${estado}')" class="w-full bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition-colors border border-green-200">
             👥 Asignar
           </button>
+          <button onclick="cambiarCapacidad(${mesaId})" class="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg transition-colors border border-purple-200">
+            👥 Cambiar Capacidad
+          </button>
         `;
       } else if (estado === 'ocupada') {
         buttons = `
@@ -452,6 +574,9 @@
           </button>
           <button onclick="accionMesa(${mesaId},'libre')" class="w-full bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition-colors border border-green-200">
             👥 Ocupar
+          </button>
+          <button onclick="cambiarCapacidad(${mesaId})" class="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg transition-colors border border-purple-200">
+            👥 Cambiar Capacidad
           </button>
         `;
       } else if (estado === 'reservada-ocupada') {

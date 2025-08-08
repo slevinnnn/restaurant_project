@@ -20,6 +20,7 @@ class Mesa(db.Model):
     cliente = db.relationship('Cliente', backref='mesa')
     llego_comensal = db.Column(db.Boolean, default=False)
     reservada = db.Column(db.Boolean, default=False)
+    capacidad = db.Column(db.Integer, default=4)  # Capacidad de la mesa
 
 class UsoMesa(db.Model):
     id = db.Column(db.Integer, primary_key=True)

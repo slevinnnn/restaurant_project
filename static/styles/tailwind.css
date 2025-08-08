@@ -475,3 +475,87 @@ main {
       }
     }
 }
+
+/* Estilos para mesas según capacidad */
+.mesa[data-capacidad="2"] .mesa-header::after {
+  content: "👥 2p";
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: #3498db;
+  color: white;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: bold;
+}
+
+.mesa[data-capacidad="4"] .mesa-header::after {
+  content: "👥 4p";
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: #27ae60;
+  color: white;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: bold;
+}
+
+.mesa[data-capacidad="6"] .mesa-header::after {
+  content: "👥 6p";
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: #f39c12;
+  color: white;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: bold;
+}
+
+.mesa[data-capacidad="8"] .mesa-header::after {
+  content: "👥 8p";
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: #e74c3c;
+  color: white;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: bold;
+}
+
+.mesa-header {
+  position: relative;
+}
+
+/* Estilos para la gestión de cola */
+.cliente-en-cola {
+  transition: all 0.3s ease;
+}
+
+.cliente-en-cola:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.mesa-selector {
+  transition: all 0.2s ease;
+}
+
+.mesa-selector:hover {
+  transform: scale(1.05);
+}
+
+.mesa-selector.bg-blue-500 {
+  animation: pulseSelection 1s infinite;
+}
+
+@keyframes pulseSelection {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}

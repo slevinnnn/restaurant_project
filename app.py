@@ -153,20 +153,54 @@ def liberar_mesa(mesa_id):
         db.session.commit()
 
         siguiente = Cliente.query.filter_by(assigned_table=None).order_by(Cliente.joined_at).first()
+        
         if siguiente and not mesa.reservada:
-            siguiente.assigned_table = mesa.id
-            mesa.is_occupied = True
-            mesa.start_time = get_chile_time()
-            mesa.cliente_id = siguiente.id
-            mesa.llego_comensal = False
-            db.session.commit()
-            # Limpiar la sesión si este era el cliente en sesión
-            if 'cliente_id' in session and session['cliente_id'] == siguiente.id:
-                session.pop('cliente_id', None)
-            if siguiente.sid:
-                socketio.emit("es_tu_turno", {
-                    "mesa": mesa.id
-                }, to=siguiente.sid)
+            # Verificar si la mesa tiene capacidad suficiente
+            if mesa.capacidad >= siguiente.cantidad_comensales:
+                # Asignación automática: la mesa tiene capacidad suficiente
+                siguiente.assigned_table = mesa.id
+                mesa.is_occupied = True
+                mesa.start_time = get_chile_time()
+                mesa.cliente_id = siguiente.id
+                mesa.llego_comensal = False
+                db.session.commit()
+                # Limpiar la sesión si este era el cliente en sesión
+                if 'cliente_id' in session and session['cliente_id'] == siguiente.id:
+                    session.pop('cliente_id', None)
+                if siguiente.sid:
+                    socketio.emit("es_tu_turno", {
+                        "mesa": mesa.id
+                    }, to=siguiente.sid)
+            else:
+                # La mesa no tiene capacidad suficiente, reservarla y buscar más mesas
+                mesa.reservada = True
+                db.session.commit()
+                
+                # Verificar si tenemos suficientes mesas disponibles para el grupo
+                mesas_disponibles = Mesa.query.filter_by(is_occupied=False, reservada=False).all()
+                capacidad_total = sum(m.capacidad for m in mesas_disponibles) + mesa.capacidad
+                
+                if capacidad_total >= siguiente.cantidad_comensales:
+                    # Reservar mesas adicionales si es necesario
+                    capacidad_acumulada = mesa.capacidad
+                    mesas_a_reservar = [mesa]
+                    
+                    for mesa_adicional in mesas_disponibles:
+                        if capacidad_acumulada >= siguiente.cantidad_comensales:
+                            break
+                        mesa_adicional.reservada = True
+                        mesas_a_reservar.append(mesa_adicional)
+                        capacidad_acumulada += mesa_adicional.capacidad
+                    
+                    db.session.commit()
+                    
+                    # Emitir evento especial para notificar al trabajador
+                    socketio.emit('cliente_necesita_multiples_mesas', {
+                        'cliente_id': siguiente.id,
+                        'cliente_nombre': siguiente.nombre,
+                        'cantidad_comensales': siguiente.cantidad_comensales,
+                        'mesas_reservadas': [m.id for m in mesas_a_reservar]
+                    })
         socketio.emit('actualizar_mesas')
         socketio.emit('actualizar_lista_clientes')
         enviar_estado_cola()
@@ -175,6 +209,179 @@ def liberar_mesa(mesa_id):
     socketio.emit('actualizar_lista_clientes')
     enviar_estado_cola()
     return jsonify({"success": False})
+
+@app.route('/asignar_cliente_a_mesas', methods=['POST'])
+@login_required
+def asignar_cliente_a_mesas():
+    """Asigna un cliente específico a mesas seleccionadas manualmente"""
+    try:
+        data = request.get_json()
+        cliente_id = data.get('cliente_id')
+        mesas_ids = data.get('mesas_ids', [])
+        
+        if not cliente_id or not mesas_ids:
+            return jsonify({"success": False, "error": "Datos incompletos"})
+        
+        cliente = db.session.get(Cliente, cliente_id)
+        if not cliente or cliente.assigned_table is not None:
+            return jsonify({"success": False, "error": "Cliente no encontrado o ya asignado"})
+        
+        # Verificar que todas las mesas estén disponibles
+        mesas = Mesa.query.filter(Mesa.id.in_(mesas_ids)).all()
+        if len(mesas) != len(mesas_ids):
+            return jsonify({"success": False, "error": "Algunas mesas no fueron encontradas"})
+        
+        for mesa in mesas:
+            if mesa.is_occupied:
+                return jsonify({"success": False, "error": f"Mesa {mesa.id} ya está ocupada"})
+        
+        # Verificar capacidad total
+        capacidad_total = sum(m.capacidad for m in mesas)
+        if capacidad_total < cliente.cantidad_comensales:
+            return jsonify({
+                "success": False, 
+                "error": f"Capacidad insuficiente. Necesitas {cliente.cantidad_comensales} personas, tienes {capacidad_total}"
+            })
+        
+        # Asignar el cliente a las mesas
+        mesa_principal = mesas[0]
+        mesa_principal.is_occupied = True
+        mesa_principal.reservada = False
+        mesa_principal.start_time = get_chile_time()
+        mesa_principal.cliente_id = cliente.id
+        mesa_principal.llego_comensal = False
+        
+        # Quitar al cliente de la cola
+        cliente.assigned_table = mesa_principal.id
+        
+        # Marcar las mesas adicionales como ocupadas (parte del mismo grupo)
+        for mesa in mesas[1:]:
+            mesa.is_occupied = True
+            mesa.reservada = False
+            mesa.start_time = get_chile_time()
+            mesa.cliente_id = cliente.id  # Mismo cliente en todas las mesas del grupo
+            mesa.llego_comensal = False
+        
+        db.session.commit()
+        
+        # Limpiar la sesión si este era el cliente en sesión
+        if 'cliente_id' in session and session['cliente_id'] == cliente.id:
+            session.pop('cliente_id', None)
+        
+        # Notificar al cliente
+        if cliente.sid:
+            mesas_asignadas = [m.id for m in mesas]
+            socketio.emit("es_tu_turno", {
+                "mesa": mesa_principal.id,
+                "mesas_adicionales": mesas_asignadas[1:] if len(mesas_asignadas) > 1 else []
+            }, to=cliente.sid)
+        
+        socketio.emit('actualizar_mesas')
+        socketio.emit('actualizar_lista_clientes')
+        enviar_estado_cola()
+        
+        return jsonify({
+            "success": True, 
+            "mesa_principal": mesa_principal.id,
+            "mesas_totales": [m.id for m in mesas],
+            "cliente_nombre": cliente.nombre
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/cambiar_capacidad/<int:mesa_id>', methods=['POST'])
+@login_required
+def cambiar_capacidad(mesa_id):
+    """Cambia la capacidad de una mesa"""
+    try:
+        data = request.get_json()
+        nueva_capacidad = int(data.get('capacidad', 4))
+        
+        if nueva_capacidad < 1 or nueva_capacidad > 20:
+            return jsonify({"success": False, "error": "La capacidad debe estar entre 1 y 20 personas"})
+        
+        mesa = db.session.get(Mesa, mesa_id)
+        if not mesa:
+            return jsonify({"success": False, "error": "Mesa no encontrada"})
+        
+        if mesa.is_occupied:
+            return jsonify({"success": False, "error": "No se puede cambiar la capacidad de una mesa ocupada"})
+        
+        mesa.capacidad = nueva_capacidad
+        db.session.commit()
+        
+        socketio.emit('actualizar_mesas')
+        return jsonify({"success": True, "nueva_capacidad": nueva_capacidad})
+        
+    except (ValueError, TypeError):
+        return jsonify({"success": False, "error": "Capacidad inválida"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/asignar_cliente_multiple/<int:cliente_id>', methods=['POST'])
+@login_required
+def asignar_cliente_multiple(cliente_id):
+    """Asigna un cliente a múltiples mesas reservadas"""
+    cliente = db.session.get(Cliente, cliente_id)
+    if not cliente or cliente.assigned_table is not None:
+        return jsonify({"success": False, "error": "Cliente no encontrado o ya asignado"})
+    
+    # Buscar mesas reservadas para este cliente (basado en capacidad necesaria)
+    mesas_reservadas = Mesa.query.filter_by(reservada=True, is_occupied=False).all()
+    
+    if not mesas_reservadas:
+        return jsonify({"success": False, "error": "No hay mesas reservadas disponibles"})
+    
+    # Verificar si las mesas reservadas tienen capacidad suficiente
+    capacidad_total = sum(m.capacidad for m in mesas_reservadas)
+    
+    if capacidad_total < cliente.cantidad_comensales:
+        return jsonify({"success": False, "error": "Las mesas reservadas no tienen capacidad suficiente"})
+    
+    # Asignar el cliente a la primera mesa y marcar las demás como ocupadas también
+    mesa_principal = mesas_reservadas[0]
+    mesa_principal.is_occupied = True
+    mesa_principal.reservada = False
+    mesa_principal.start_time = get_chile_time()
+    mesa_principal.cliente_id = cliente.id
+    mesa_principal.llego_comensal = False
+    
+    # Quitar al cliente de la cola
+    cliente.assigned_table = mesa_principal.id
+    
+    # Marcar las mesas adicionales como ocupadas (parte del mismo grupo)
+    for mesa in mesas_reservadas[1:]:
+        mesa.is_occupied = True
+        mesa.reservada = False
+        mesa.start_time = get_chile_time()
+        mesa.cliente_id = cliente.id  # Mismo cliente en todas las mesas del grupo
+        mesa.llego_comensal = False
+    
+    db.session.commit()
+    
+    # Limpiar la sesión si este era el cliente en sesión
+    if 'cliente_id' in session and session['cliente_id'] == cliente.id:
+        session.pop('cliente_id', None)
+    
+    # Notificar al cliente
+    if cliente.sid:
+        mesas_asignadas = [m.id for m in mesas_reservadas]
+        socketio.emit("es_tu_turno", {
+            "mesa": mesa_principal.id,
+            "mesas_adicionales": mesas_asignadas[1:] if len(mesas_asignadas) > 1 else []
+        }, to=cliente.sid)
+    
+    socketio.emit('actualizar_mesas')
+    socketio.emit('actualizar_lista_clientes')
+    enviar_estado_cola()
+    
+    return jsonify({
+        "success": True, 
+        "mesa_principal": mesa_principal.id,
+        "mesas_totales": [m.id for m in mesas_reservadas]
+    })
 
 @app.route('/ocupar_mesa/<int:mesa_id>', methods=['POST'])
 def ocupar_mesa(mesa_id):

@@ -8,7 +8,39 @@
 <body>
 {% block content %}
   <div class="clientes-container">
+    <!-- Panel de gestión de cola -->
+    <div class="mt-4 bg-white rounded-lg shadow-lg p-6 mb-6">
+      <h2 class="text-xl font-bold mb-4 text-gray-800">🕐 Gestión de Cola</h2>
+      
+      <div id="clientes-cola" class="space-y-3">
+        {% for cliente in clientes %}
+        <div class="cliente-en-cola bg-gray-50 p-4 rounded-lg border-l-4 border-blue-500" data-cliente-id="{{ cliente.id }}">
+          <div class="flex justify-between items-center">
+            <div>
+              <h3 class="font-semibold text-gray-800">{{ cliente.nombre }}</h3>
+              <p class="text-sm text-gray-600">{{ cliente.cantidad_comensales }} comensales</p>
+              <p class="text-xs text-gray-500">Esperando desde: {{ cliente.joined_at.strftime('%H:%M') }}</p>
+            </div>
+            <div class="flex gap-2">
+              <button onclick="iniciarAsignacionManual({{ cliente.id }}, '{{ cliente.nombre }}', {{ cliente.cantidad_comensales }})" 
+                      class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm">
+                🏠 Asignar Mesas
+              </button>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+        
+        {% if not clientes %}
+        <div class="text-center text-gray-500 py-8">
+          <p class="text-lg">🎉 No hay clientes en espera</p>
+          <p class="text-sm">Todos los clientes han sido atendidos</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
 
+    <!-- Tabla detallada de clientes -->
     <div class="overflow-x-auto">
       <table class="clientes-table">
         <thead>
@@ -23,7 +55,7 @@
         <tbody id="clientes-lista">
           {% if not clientes %}
           <tr>
-            <td colspan="3" class="px-6 py-4 text-center text-gray-500 font-medium">No hay clientes en espera</td>
+            <td colspan="5" class="px-6 py-4 text-center text-gray-500 font-medium">No hay clientes en espera</td>
           </tr>
           {% endif %}
           {% for c in clientes %}
@@ -41,11 +73,44 @@
       </table>
     </div>
   </div>
+
+  <!-- Modal para asignación manual -->
+  <div id="modal-asignacion" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+      <h3 class="text-lg font-bold mb-4">Asignar Cliente a Mesas</h3>
+      <div id="info-cliente-modal" class="mb-4 p-3 bg-blue-50 rounded">
+        <!-- Info del cliente se llenará dinámicamente -->
+      </div>
+      
+      <div class="mb-4">
+        <h4 class="font-semibold mb-2">Selecciona las mesas:</h4>
+        <div id="selector-mesas" class="grid grid-cols-4 gap-2">
+          <!-- Mesas disponibles se llenarán dinámicamente -->
+        </div>
+        <div id="capacidad-seleccionada" class="mt-2 text-sm text-gray-600">
+          Capacidad seleccionada: <span id="capacidad-total">0</span> personas
+        </div>
+      </div>
+      
+      <div class="flex gap-2 justify-end">
+        <button onclick="cerrarModalAsignacion()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded">
+          Cancelar
+        </button>
+        <button onclick="confirmarAsignacion()" id="btn-confirmar" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded" disabled>
+          Asignar
+        </button>
+      </div>
+    </div>
+  </div>
 {% endblock %}
 {% block scripts %}
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
       const socket = io();
+
+      // Variables para gestión de cola
+      let clienteSeleccionado = null;
+      let mesasSeleccionadas = [];
 
       function formatTimeElapsed(seconds) {
         const hours = Math.floor(seconds / 3600);
@@ -74,26 +139,165 @@
       setInterval(updateWaitingTimes, 1000);
       updateWaitingTimes(); // Actualización inicial
 
+      // Función para iniciar asignación manual
+      function iniciarAsignacionManual(clienteId, clienteNombre, cantidadComensales) {
+        clienteSeleccionado = {
+          id: clienteId,
+          nombre: clienteNombre,
+          comensales: cantidadComensales
+        };
+        
+        // Mostrar información del cliente
+        document.getElementById('info-cliente-modal').innerHTML = `
+          <strong>${clienteNombre}</strong><br>
+          <span class="text-sm">👥 ${cantidadComensales} comensales</span>
+        `;
+        
+        // Cargar mesas disponibles
+        cargarMesasDisponibles();
+        
+        // Mostrar modal
+        document.getElementById('modal-asignacion').classList.remove('hidden');
+      }
+      
+      function cargarMesasDisponibles() {
+        fetch('/trabajador')
+          .then(response => response.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const mesas = doc.querySelectorAll('.mesa');
+            
+            const selectorMesas = document.getElementById('selector-mesas');
+            selectorMesas.innerHTML = '';
+            
+            mesas.forEach(mesa => {
+              const mesaId = mesa.dataset.mesaId;
+              const estado = mesa.dataset.estado;
+              const capacidad = mesa.dataset.capacidad;
+              
+              if (estado === 'libre' || estado === 'reservada') {
+                const botonMesa = document.createElement('button');
+                botonMesa.className = 'mesa-selector p-2 border rounded text-xs hover:bg-blue-100';
+                botonMesa.innerHTML = `Mesa ${mesaId}<br><span class="text-xs">👥 ${capacidad}p</span>`;
+                botonMesa.dataset.mesaId = mesaId;
+                botonMesa.dataset.capacidad = capacidad;
+                botonMesa.onclick = () => toggleMesaSeleccion(mesaId, capacidad, botonMesa);
+                
+                selectorMesas.appendChild(botonMesa);
+              }
+            });
+          });
+      }
+      
+      function toggleMesaSeleccion(mesaId, capacidad, botonElement) {
+        const index = mesasSeleccionadas.findIndex(m => m.id === mesaId);
+        
+        if (index === -1) {
+          // Agregar mesa
+          mesasSeleccionadas.push({ id: mesaId, capacidad: parseInt(capacidad) });
+          botonElement.classList.add('bg-blue-500', 'text-white');
+        } else {
+          // Quitar mesa
+          mesasSeleccionadas.splice(index, 1);
+          botonElement.classList.remove('bg-blue-500', 'text-white');
+        }
+        
+        // Actualizar capacidad total
+        const capacidadTotal = mesasSeleccionadas.reduce((sum, mesa) => sum + mesa.capacidad, 0);
+        document.getElementById('capacidad-total').textContent = capacidadTotal;
+        
+        // Habilitar/deshabilitar botón de confirmar
+        const btnConfirmar = document.getElementById('btn-confirmar');
+        if (capacidadTotal >= clienteSeleccionado.comensales && mesasSeleccionadas.length > 0) {
+          btnConfirmar.disabled = false;
+          btnConfirmar.classList.remove('opacity-50');
+        } else {
+          btnConfirmar.disabled = true;
+          btnConfirmar.classList.add('opacity-50');
+        }
+      }
+      
+      function confirmarAsignacion() {
+        if (!clienteSeleccionado || mesasSeleccionadas.length === 0) {
+          return;
+        }
+        
+        const mesasIds = mesasSeleccionadas.map(m => m.id);
+        
+        fetch('/asignar_cliente_a_mesas', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            cliente_id: clienteSeleccionado.id,
+            mesas_ids: mesasIds
+          })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert(`Cliente ${data.cliente_nombre} asignado exitosamente a las mesas: ${data.mesas_totales.join(', ')}`);
+            cerrarModalAsignacion();
+            actualizarListaClientes(); // Actualizar la lista sin recargar
+          } else {
+            alert(`Error: ${data.error}`);
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('Error al asignar cliente');
+        });
+      }
+      
+      function cerrarModalAsignacion() {
+        document.getElementById('modal-asignacion').classList.add('hidden');
+        clienteSeleccionado = null;
+        mesasSeleccionadas = [];
+        
+        // Limpiar selecciones
+        document.querySelectorAll('.mesa-selector').forEach(btn => {
+          btn.classList.remove('bg-blue-500', 'text-white');
+        });
+        document.getElementById('capacidad-total').textContent = '0';
+      }
+
       function actualizarListaClientes() {
         fetch('/clientes')
           .then(res => res.json())
           .then(data => {
+            // Actualizar tabla detallada
             const tbody = document.querySelector('#clientes-lista');
             tbody.innerHTML = '';
             
+            // Actualizar sección de gestión de cola
+            const colaContainer = document.getElementById('clientes-cola');
+            colaContainer.innerHTML = '';
+            
             if (data.length === 0) {
+              // Mensaje para tabla
               const tr = document.createElement('tr');
               tr.innerHTML = `
-                <td colspan="3" class="px-6 py-4 text-center text-gray-500 font-medium">
+                <td colspan="5" class="px-6 py-4 text-center text-gray-500 font-medium">
                   No hay clientes en espera
                 </td>
               `;
               tbody.appendChild(tr);
+              
+              // Mensaje para gestión de cola
+              const noClientesDiv = document.createElement('div');
+              noClientesDiv.className = 'text-center text-gray-500 py-8';
+              noClientesDiv.innerHTML = `
+                <p class="text-lg">🎉 No hay clientes en espera</p>
+                <p class="text-sm">Todos los clientes han sido atendidos</p>
+              `;
+              colaContainer.appendChild(noClientesDiv);
             } else {
               data.forEach(c => {
-                console.log(c.joined_at);
-                console.log(Date.parse(c.joined_at));
                 const joinedDate = new Date(c.joined_at);
+                
+                // Agregar a tabla detallada
                 const tr = document.createElement('tr');
                 tr.className = 'border-b border-gray-200 hover:bg-gray-50';
                 tr.innerHTML = `
@@ -106,6 +310,27 @@
                   </td>
                 `;
                 tbody.appendChild(tr);
+                
+                // Agregar a gestión de cola
+                const clienteDiv = document.createElement('div');
+                clienteDiv.className = 'cliente-en-cola bg-gray-50 p-4 rounded-lg border-l-4 border-blue-500';
+                clienteDiv.dataset.clienteId = c.id;
+                clienteDiv.innerHTML = `
+                  <div class="flex justify-between items-center">
+                    <div>
+                      <h3 class="font-semibold text-gray-800">${c.nombre || 'Sin nombre'}</h3>
+                      <p class="text-sm text-gray-600">${c.cantidad_comensales || 0} comensales</p>
+                      <p class="text-xs text-gray-500">Esperando desde: ${joinedDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                    </div>
+                    <div class="flex gap-2">
+                      <button onclick="iniciarAsignacionManual(${c.id}, '${c.nombre || 'Sin nombre'}', ${c.cantidad_comensales || 0})" 
+                              class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm">
+                        🏠 Asignar Mesas
+                      </button>
+                    </div>
+                  </div>
+                `;
+                colaContainer.appendChild(clienteDiv);
               });
               updateWaitingTimes();
             }
