@@ -8,39 +8,7 @@
 <body>
 {% block content %}
   <div class="clientes-container">
-    <!-- Panel de gestión de cola -->
-    <div class="mt-4 bg-white rounded-lg shadow-lg p-6 mb-6">
-      <h2 class="text-xl font-bold mb-4 text-gray-800">🕐 Gestión de Cola</h2>
-      
-      <div id="clientes-cola" class="space-y-3">
-        {% for cliente in clientes %}
-        <div class="cliente-en-cola bg-gray-50 p-4 rounded-lg border-l-4 border-blue-500" data-cliente-id="{{ cliente.id }}">
-          <div class="flex justify-between items-center">
-            <div>
-              <h3 class="font-semibold text-gray-800">{{ cliente.nombre }}</h3>
-              <p class="text-sm text-gray-600">{{ cliente.cantidad_comensales }} comensales</p>
-              <p class="text-xs text-gray-500">Esperando desde: {{ cliente.joined_at.strftime('%H:%M') }}</p>
-            </div>
-            <div class="flex gap-2">
-              <button onclick="iniciarAsignacionManual({{ cliente.id }}, '{{ cliente.nombre }}', {{ cliente.cantidad_comensales }})" 
-                      class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm">
-                🏠 Asignar Mesas
-              </button>
-            </div>
-          </div>
-        </div>
-        {% endfor %}
-        
-        {% if not clientes %}
-        <div class="text-center text-gray-500 py-8">
-          <p class="text-lg">🎉 No hay clientes en espera</p>
-          <p class="text-sm">Todos los clientes han sido atendidos</p>
-        </div>
-        {% endif %}
-      </div>
-    </div>
 
-    <!-- Tabla detallada de clientes -->
     <div class="overflow-x-auto">
       <table class="clientes-table">
         <thead>
@@ -50,22 +18,34 @@
             <th class="text-xs sm:text-sm">Comensales</th>
             <th class="text-xs sm:text-sm">Llegada</th>
             <th class="text-xs sm:text-sm">Espera</th>
+            <th class="text-xs sm:text-sm">Acciones</th>
           </tr>
         </thead>
         <tbody id="clientes-lista">
           {% if not clientes %}
           <tr>
-            <td colspan="5" class="px-6 py-4 text-center text-gray-500 font-medium">No hay clientes en espera</td>
+            <td colspan="6" class="px-6 py-4 text-center text-gray-500 font-medium">
+              <div class="text-center py-8">
+                <p class="text-lg">🎉 No hay clientes en espera</p>
+                <p class="text-sm">Todos los clientes han sido atendidos</p>
+              </div>
+            </td>
           </tr>
           {% endif %}
           {% for c in clientes %}
           <tr>
             <td class="text-xs sm:text-sm whitespace-nowrap">#{{ c.id }}</td>
-            <td class="text-xs sm:text-sm whitespace-nowrap">{{ c.nombre|truncate(10) }}</td>
+            <td class="text-xs sm:text-sm whitespace-nowrap">{{ c.nombre|truncate(15) }}</td>
             <td class="text-xs sm:text-sm text-center">{{ c.cantidad_comensales }}</td>
             <td class="text-xs sm:text-sm whitespace-nowrap">{{ c.joined_at.strftime('%H:%M') }}</td>
             <td class="text-xs sm:text-sm" id="wait-time-{{ c.id }}">
               <span class="waiting-time" data-joined="{{ c.joined_at.isoformat() }}">Calculando...</span>
+            </td>
+            <td class="text-xs sm:text-sm">
+              <button onclick="iniciarAsignacionManual({{ c.id }}, '{{ c.nombre }}', {{ c.cantidad_comensales }})" 
+                      class="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs">
+                🏠 Asignar
+              </button>
             </td>
           </tr>
           {% endfor %}
@@ -267,73 +247,51 @@
         fetch('/clientes')
           .then(res => res.json())
           .then(data => {
-            // Actualizar tabla detallada
+            // Actualizar tabla
             const tbody = document.querySelector('#clientes-lista');
             tbody.innerHTML = '';
             
-            // Actualizar sección de gestión de cola
-            const colaContainer = document.getElementById('clientes-cola');
-            colaContainer.innerHTML = '';
-            
             if (data.length === 0) {
-              // Mensaje para tabla
               const tr = document.createElement('tr');
               tr.innerHTML = `
-                <td colspan="5" class="px-6 py-4 text-center text-gray-500 font-medium">
-                  No hay clientes en espera
+                <td colspan="6" class="px-6 py-4 text-center text-gray-500 font-medium">
+                  <div class="text-center py-8">
+                    <p class="text-lg">🎉 No hay clientes en espera</p>
+                    <p class="text-sm">Todos los clientes han sido atendidos</p>
+                  </div>
                 </td>
               `;
               tbody.appendChild(tr);
-              
-              // Mensaje para gestión de cola
-              const noClientesDiv = document.createElement('div');
-              noClientesDiv.className = 'text-center text-gray-500 py-8';
-              noClientesDiv.innerHTML = `
-                <p class="text-lg">🎉 No hay clientes en espera</p>
-                <p class="text-sm">Todos los clientes han sido atendidos</p>
-              `;
-              colaContainer.appendChild(noClientesDiv);
             } else {
               data.forEach(c => {
                 const joinedDate = new Date(c.joined_at);
                 
-                // Agregar a tabla detallada
                 const tr = document.createElement('tr');
                 tr.className = 'border-b border-gray-200 hover:bg-gray-50';
                 tr.innerHTML = `
                   <td class="text-xs sm:text-sm whitespace-nowrap">#${c.id}</td>
-                  <td class="text-xs sm:text-sm whitespace-nowrap">${(c.nombre || 'Sin nombre').substring(0, 10)}</td>
+                  <td class="text-xs sm:text-sm whitespace-nowrap">${(c.nombre || 'Sin nombre').substring(0, 15)}</td>
                   <td class="text-xs sm:text-sm text-center">${c.cantidad_comensales || '-'}</td>
                   <td class="text-xs sm:text-sm whitespace-nowrap">${joinedDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
                   <td class="text-xs sm:text-sm" id="wait-time-${c.id}">
                     <span class="waiting-time" data-joined="${c.joined_at}">Calculando...</span>
                   </td>
+                  <td class="text-xs sm:text-sm">
+                    <button onclick="iniciarAsignacionManual(${c.id}, '${c.nombre}', ${c.cantidad_comensales})" 
+                            class="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs">
+                      🏠 Asignar
+                    </button>
+                  </td>
                 `;
                 tbody.appendChild(tr);
-                
-                // Agregar a gestión de cola
-                const clienteDiv = document.createElement('div');
-                clienteDiv.className = 'cliente-en-cola bg-gray-50 p-4 rounded-lg border-l-4 border-blue-500';
-                clienteDiv.dataset.clienteId = c.id;
-                clienteDiv.innerHTML = `
-                  <div class="flex justify-between items-center">
-                    <div>
-                      <h3 class="font-semibold text-gray-800">${c.nombre || 'Sin nombre'}</h3>
-                      <p class="text-sm text-gray-600">${c.cantidad_comensales || 0} comensales</p>
-                      <p class="text-xs text-gray-500">Esperando desde: ${joinedDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
-                    </div>
-                    <div class="flex gap-2">
-                      <button onclick="iniciarAsignacionManual(${c.id}, '${c.nombre || 'Sin nombre'}', ${c.cantidad_comensales || 0})" 
-                              class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm">
-                        🏠 Asignar Mesas
-                      </button>
-                    </div>
-                  </div>
-                `;
-                colaContainer.appendChild(clienteDiv);
               });
-              updateWaitingTimes();
             }
+            
+            // Reiniciar temporizadores para mostrar tiempo de espera
+            updateAllWaitingTimes();
+          })
+          .catch(error => {
+            console.error('Error al actualizar lista de clientes:', error);
           });
       }
 
