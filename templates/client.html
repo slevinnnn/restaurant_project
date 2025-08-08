@@ -20,7 +20,7 @@
     });
 
     socket.on("es_tu_turno", (data) => {
-      document.getElementById("estado").className = "font-bold text-8xl";
+      document.getElementById("estado").className = "font-bold text-6xl";
       document.getElementById("estado").innerText = "¡Es tu turno! Ve a la mesa " + data.mesa;
       document.getElementById("actualmente").style.display = "none";
       document.getElementById("atendiendo").style.display = "none";

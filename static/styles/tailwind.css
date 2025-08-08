@@ -180,30 +180,177 @@ main {
 }
 
 .login-button{
-  @apply border-card_text_secondary sm:text-lg  hover:bg-card_text hover:text-card_background transition-colors duration-300 border-2 rounded-xl cursor-pointer h-[50px];
+  width: 100%;
+  padding: 18px;
+  background: linear-gradient(135deg, #1abc9c, #16a085);
+  color: #fff;
+  border: none;
+  border-radius: 16px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 20px;
+  box-shadow: 0 10px 20px rgba(26, 188, 156, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.login-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.login-button:hover::before {
+  left: 100%;
+}
+
+.login-button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 30px rgba(26, 188, 156, 0.4);
+}
+
+.login-button:active {
+  transform: translateY(-1px);
 }
 
 .login-input{
-  @apply  border-card_headline border-2 p-2 sm:text-lg rounded-xl w-full my-1 text-card_text placeholder:text-card_text focus:outline-none focus:ring-2 focus:ring-card_text focus:border-transparent;
-  
+  width: 100%;
+  padding: 16px 20px;
+  border: 2px solid #e1e8ed;
+  border-radius: 16px;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  background: #fff;
+  color: #2c3e50;
+  margin: 6px 0;
+}
+
+.login-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+  transform: translateY(-2px);
+}
+
+.login-input::placeholder {
+  color: #7f8c8d;
 }
 .formulario-inputs {
-    @apply w-full flex flex-col  p-2;
-  }
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 .formulario {
-  @apply  mt-5 rounded-2xl bg-card_background-light-1 border-3 border-card_background-dark-1 shadow-lg;
+  width: 100%;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 .fondo-login {
-  @apply bg-[url('/static/images/pizzeria.jpg')] bg-cover bg-center h-screen w-screen;
+  background: linear-gradient(135deg, #ff6b6b 0%, #e74c3c 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
 }
 
 .blur-fondo-login {
-  @apply absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 40px 30px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  animation: slideUp 0.8s ease-out;
+  position: relative;
+  overflow: hidden;
+}
+
+.blur-fondo-login::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0%, 100% { transform: translateX(-100%); }
+  50% { transform: translateX(100%); }
+}
+
+/* Estilos para logo y títulos en login/registro */
+.logo {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.logo-icon {
+  width: 70px;
+  height: 70px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  margin-bottom: 15px;
+  box-shadow: 0 10px 20px rgba(238, 90, 82, 0.3);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.welcome-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #2c3e50;
+  text-align: center;
+  margin-bottom: 10px;
+  line-height: 1.2;
+}
+
+.welcome-subtitle {
+  font-size: 16px;
+  color: #7f8c8d;
+  text-align: center;
+  margin-bottom: 35px;
+  line-height: 1.4;
 }
 
 .login-formulario {
-    @apply h-100 w-80 p-2 shadow-md flex flex-col justify-around  ;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
 }
 .header{
   @apply  flex flex-col justify-end w-full h-[20vh]  ;
