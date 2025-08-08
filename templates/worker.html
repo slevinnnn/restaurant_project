@@ -89,7 +89,7 @@
             <div class="mesa-info-row">
               <i class="fas fa-stopwatch mesa-info-icon"></i>
               <span>Tiempo: </span>
-              <span id="timer-{{ m.id }}" data-start-time="{{ m.start_time.isoformat() if m.start_time else '' }}" class="font-semibold text-card_text">
+              <span id="timer-{{ m.id }}" data-start-timestamp="{{ datetime_to_js_timestamp(m.start_time) if m.start_time else '' }}" class="font-semibold text-card_text">
                 calculando...
               </span>
             </div>
@@ -170,9 +170,9 @@
           // Reinicializar los temporizadores para las mesas ocupadas
           document.querySelectorAll('.mesa').forEach(mesa => {
             const mesaId = mesa.id.split('-')[1];
-            const startTimeElement = mesa.querySelector('[data-start-time]');
-            if (startTimeElement && mesa.classList.contains('ocupada')) {
-              iniciarTemporizador(mesaId, startTimeElement.dataset.startTime);
+            const startTimestampElement = mesa.querySelector('[data-start-timestamp]');
+            if (startTimestampElement && mesa.classList.contains('ocupada')) {
+              iniciarTemporizador(mesaId, startTimestampElement.dataset.startTimestamp);
             }
           });
         });
@@ -350,17 +350,24 @@
       }
     }
 
-    function iniciarTemporizador(mesaId, startTimeStr) {
-      if (!startTimeStr) return; // Si no hay tiempo de inicio, no iniciar el temporizador
+    function iniciarTemporizador(mesaId, startTimestamp) {
+      if (!startTimestamp) return; // Si no hay timestamp de inicio, no iniciar el temporizador
       
       // Primero limpiar cualquier temporizador existente
       limpiarTemporizador(mesaId);
       
-      const startTime = new Date(startTimeStr);
+      const startTime = new Date(parseInt(startTimestamp)); // Convertir timestamp a Date
       const mesaElement = document.getElementById(`mesa-${mesaId}`);
       const timerElement = document.getElementById(`timer-${mesaId}`);
       
       if (!timerElement) return; // Si no existe el elemento del timer, no continuar
+      
+      // Debug: mostrar información en consola
+      console.log(`Iniciando temporizador para mesa ${mesaId}:`, {
+        timestamp: startTimestamp,
+        startTime: startTime,
+        now: new Date()
+      });
       
       function actualizar() {
         const ahora = new Date();
@@ -398,7 +405,7 @@
 
     {% for m in mesas %}
       {% if m.is_occupied and m.start_time %}
-        iniciarTemporizador({{ m.id }}, "{{ m.start_time.isoformat() }}");
+        iniciarTemporizador({{ m.id }}, "{{ datetime_to_js_timestamp(m.start_time) }}");
       {% endif %}
     {% endfor %}
 

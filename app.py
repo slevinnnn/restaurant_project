@@ -11,24 +11,6 @@ from flask_migrate import Migrate
 from flask import render_template, request, redirect, url_for, session, flash
 from models import Trabajador
 
-app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite3'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = 'clave_super_secreta_123'
-db.init_app(app)
-migrate = Migrate(app, db)
-
-socketio = SocketIO(app)
-
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'trabajador_id' not in session:
-            flash('Debes iniciar sesión para acceder a esta página')
-            return redirect(url_for('login'))
-        return f(*args, **kwargs)
-    return decorated_function
-
 def get_chile_time():
     santiago_tz = pytz.timezone('America/Santiago')
     return datetime.now(santiago_tz)
@@ -41,6 +23,36 @@ def convert_to_chile_time(dt):
     if dt.tzinfo is None:
         return santiago_tz.localize(dt)
     return dt.astimezone(santiago_tz)
+
+def datetime_to_js_timestamp(dt):
+    """Convierte un datetime a timestamp compatible con JavaScript"""
+    if dt is None:
+        return None
+    # Asegurar que esté en hora de Chile
+    chile_time = convert_to_chile_time(dt)
+    # Retornar timestamp en milisegundos para JavaScript
+    return int(chile_time.timestamp() * 1000)
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite3'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SECRET_KEY'] = 'clave_super_secreta_123'
+db.init_app(app)
+migrate = Migrate(app, db)
+
+# Registrar función para usar en templates
+app.jinja_env.globals['datetime_to_js_timestamp'] = datetime_to_js_timestamp
+
+socketio = SocketIO(app)
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'trabajador_id' not in session:
+            flash('Debes iniciar sesión para acceder a esta página')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 def initialize_tables():
     with app.app_context():
@@ -144,7 +156,7 @@ def liberar_mesa(mesa_id):
         if siguiente and not mesa.reservada:
             siguiente.assigned_table = mesa.id
             mesa.is_occupied = True
-            mesa.start_time = datetime.now()
+            mesa.start_time = get_chile_time()
             mesa.cliente_id = siguiente.id
             mesa.llego_comensal = False
             db.session.commit()
@@ -197,7 +209,7 @@ def cancelar_reserva(mesa_id):
         if siguiente:
             siguiente.assigned_table = mesa.id
             mesa.is_occupied = True
-            mesa.start_time = datetime.now()
+            mesa.start_time = get_chile_time()
             mesa.cliente_id = siguiente.id
             mesa.llego_comensal = False
             db.session.commit()
