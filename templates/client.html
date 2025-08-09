@@ -11,15 +11,41 @@
   <p class="msj-estado" id="estado">Esperando tu turno...</p>
   <br>
   <div class="tiempo-espera-promedio" id="tiempo-espera-container">
-    <p class="msj-tiempo-espera" id="tiempo-espera">
+    <p class="msj-tiempo-espera" id="tiempo-espera" onclick="toggleInfoPopover()" style="cursor: pointer;">
       ⏱️ Tiempo de espera estimado: <strong id="tiempo-promedio">Calculando...</strong>
+      <span style="font-size: 0.8em; color: #6b7280; margin-left: 8px;">ℹ️</span>
     </p>
+    
+    <!-- Popover informativo -->
+    <div id="info-popover" class="popover-info hidden">
+      <div class="popover-content">
+        <p><strong>ℹ️ Información sobre el tiempo de espera:</strong></p>
+        <p>El tiempo de espera puede variar y este es solo una estimación. El tiempo se calcula en base al tiempo de espera de los últimos 6 comensales en la fila.</p>
+        <button onclick="toggleInfoPopover()" class="popover-close">Entendido</button>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <script>
     const id = {{ numero }};
     const socket = io();
+
+    // Función para mostrar/ocultar el popover
+    function toggleInfoPopover() {
+      const popover = document.getElementById("info-popover");
+      popover.classList.toggle("hidden");
+    }
+
+    // Cerrar popover al hacer clic fuera de él
+    document.addEventListener('click', function(event) {
+      const popover = document.getElementById("info-popover");
+      const tiempoEspera = document.getElementById("tiempo-espera");
+      
+      if (!popover.contains(event.target) && !tiempoEspera.contains(event.target)) {
+        popover.classList.add("hidden");
+      }
+    });
 
     // Función para obtener y actualizar el tiempo de espera promedio
     function actualizarTiempoEsperaPromedio() {

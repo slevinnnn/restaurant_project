@@ -903,6 +903,52 @@ main {
   font-weight: var(--font-weight-medium);
   color: var(--color-gray-700);
 }
+.popover-info {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  padding: 20px;
+  min-width: 320px;
+  width: 90vw;
+  z-index: 1000;
+  margin-top: 8px;
+}
+.popover-content {
+  font-size: 30px;
+  line-height: 1.5;
+  color: #374151;
+}
+.popover-content p {
+  margin-bottom: 12px;
+}
+.popover-content p:last-of-type {
+  margin-bottom: 16px;
+}
+.popover-close {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 25px;
+  cursor: pointer;
+  width: 100%;
+  transition: background-color 0.2s;
+}
+.popover-close:hover {
+  background: #2563eb;
+}
+.hidden {
+  display: none;
+}
+.tiempo-espera-promedio {
+  position: relative;
+}
 .login-button {
   width: 100%;
   padding: 18px;
