@@ -927,6 +927,7 @@ main {
 .fondo-login {
   background: linear-gradient(135deg, #ff6b6b 0%, #e74c3c 100%);
   min-height: 100vh;
+  min-width: 100vw;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -936,7 +937,7 @@ main {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
   border-radius: 24px;
-  padding: 40px 30px;
+  padding: 20px 30px;
   width: 100%;
   max-width: 400px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
@@ -944,16 +945,6 @@ main {
   animation: slideUp 0.8s ease-out;
   position: relative;
   overflow: hidden;
-}
-.blur-fondo-login::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3);
-  animation: shimmer 2s infinite;
 }
 @keyframes slideUp {
   from {
@@ -978,7 +969,7 @@ main {
   margin-bottom: 30px;
 }
 .logo-icon {
-  width: 70px;
+  width: 100px;
   height: 70px;
   border-radius: 20px;
   display: inline-flex;
