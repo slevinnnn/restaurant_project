@@ -90,7 +90,6 @@
             </div>
             <div class="mesa-info-row">
               <i class="fas fa-stopwatch mesa-info-icon"></i>
-              <span>Tiempo: </span>
               <span id="timer-{{ m.id }}" data-start-timestamp="{{ datetime_to_js_timestamp(m.start_time) if m.start_time else '' }}" class="font-semibold text-card_text">
                 calculando...
               </span>
