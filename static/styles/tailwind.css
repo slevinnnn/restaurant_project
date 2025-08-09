@@ -164,19 +164,19 @@ main {
 }
 
 .msj-bienvenida{
-  @apply text-6xl font-bold text-card_text mb-4;
+  @apply text-7xl font-bold text-card_text mb-4;
 }
 
 .msj-actualmente{
-  @apply text-4xl text-card_text mb-2;
+  @apply text-5xl text-card_text mb-2;
 }
 
 .msj-tu-numero{
-  @apply text-4xl text-card_text mb-2;
+  @apply text-5xl text-card_text mb-2;
 }
 
 .msj-estado{
-  @apply text-4xl font-bold text-card_text mb-2;
+  @apply text-5xl font-bold text-card_text mb-2;
 }
 
 .tiempo-espera-promedio{
@@ -184,7 +184,7 @@ main {
 }
 
 .msj-tiempo-espera{
-  @apply text-xl text-gray-700 font-medium text-center;
+  @apply text-4xl text-gray-700 font-medium text-center;
 }
 
 .login-button{
