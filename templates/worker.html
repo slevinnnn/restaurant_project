@@ -276,6 +276,124 @@
       });
     }
 
+    function mostrarOrden(mesaId) {
+      // Obtener la orden actual de la mesa
+      fetch(`/obtener_orden/${mesaId}`)
+        .then(res => res.json())
+        .then(data => {
+          // Crear modal para mostrar/editar la orden
+          const modal = document.createElement('div');
+          modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+          `;
+          
+          const contenido = document.createElement('div');
+          contenido.style.cssText = `
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80%;
+            overflow-y: auto;
+          `;
+          
+          contenido.innerHTML = `
+            <h3 style="margin-bottom: 16px; font-size: 18px; font-weight: bold; color: #333;">
+              📝 Orden - Mesa #${mesaId}
+            </h3>
+            <textarea 
+              id="orden-textarea" 
+              placeholder="Escriba aquí la orden de los comensales..."
+              style="
+                width: 100%;
+                height: 200px;
+                padding: 12px;
+                border: 2px solid #e5e7eb;
+                border-radius: 8px;
+                resize: vertical;
+                font-family: Arial, sans-serif;
+                font-size: 14px;
+                line-height: 1.5;
+              "
+            >${data.orden || ''}</textarea>
+            <div style="display: flex; gap: 8px; margin-top: 16px;">
+              <button onclick="guardarOrden(${mesaId})" style="
+                flex: 1;
+                background: #10b981;
+                color: white;
+                border: none;
+                padding: 12px;
+                border-radius: 8px;
+                font-weight: bold;
+                cursor: pointer;
+              ">
+                💾 Guardar
+              </button>
+              <button onclick="cerrarModal()" style="
+                flex: 1;
+                background: #6b7280;
+                color: white;
+                border: none;
+                padding: 12px;
+                border-radius: 8px;
+                font-weight: bold;
+                cursor: pointer;
+              ">
+                ❌ Cancelar
+              </button>
+            </div>
+          `;
+          
+          modal.appendChild(contenido);
+          document.body.appendChild(modal);
+          
+          // Guardar referencia del modal
+          window.modalActual = modal;
+          
+          // Enfocar el textarea
+          document.getElementById('orden-textarea').focus();
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('Error al cargar la orden');
+        });
+    }
+
+    function guardarOrden(mesaId) {
+      const orden = document.getElementById('orden-textarea').value;
+      
+      fetch(`/guardar_orden/${mesaId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ orden: orden })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          cerrarModal();
+          alert('Orden guardada exitosamente');
+        } else {
+          alert(`Error: ${data.error}`);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Error al guardar la orden');
+      });
+    }
+
     function asignarClienteMultiple(clienteId) {
       fetch(`/asignar_cliente_multiple/${clienteId}`, { 
         method: 'POST',
@@ -555,6 +673,9 @@
         `;
       } else if (estado === 'ocupada') {
         buttons = `
+          <button onclick="mostrarOrden(${mesaId})" class="w-full bg-yellow-50 hover:bg-yellow-100 text-yellow-700 rounded-lg transition-colors border border-yellow-200">
+            📝 Orden
+          </button>
           <button onclick="accionMesa(${mesaId}, '${estado}')" class="w-full bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-lg transition-colors border border-orange-200">
             ⏯️ Desocupar
           </button>
@@ -582,6 +703,9 @@
         `;
       } else if (estado === 'reservada-ocupada') {
         buttons = `
+          <button onclick="mostrarOrden(${mesaId})" class="w-full bg-yellow-50 hover:bg-yellow-100 text-yellow-700 rounded-lg transition-colors border border-yellow-200">
+            📝 Orden
+          </button>
           <button class="w-full bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-colors border border-red-200">
             ❌ Desocupar y Cancelar
           </button>

@@ -21,6 +21,7 @@ class Mesa(db.Model):
     llego_comensal = db.Column(db.Boolean, default=False)
     reservada = db.Column(db.Boolean, default=False)
     capacidad = db.Column(db.Integer, default=4)  # Capacidad de la mesa
+    orden = db.Column(db.Text, nullable=True)  # Orden de los comensales
 
 class UsoMesa(db.Model):
     id = db.Column(db.Integer, primary_key=True)

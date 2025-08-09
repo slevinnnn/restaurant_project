@@ -150,6 +150,7 @@ def liberar_mesa(mesa_id):
         mesa.start_time = None
         mesa.cliente_id = None
         mesa.llego_comensal = False
+        mesa.orden = None  # Borrar la orden cuando se desocupa la mesa
         db.session.commit()
 
         siguiente = Cliente.query.filter_by(assigned_table=None).order_by(Cliente.joined_at).first()
@@ -587,6 +588,24 @@ def confirmar_llegada(mesa_id):
         socketio.emit('actualizar_mesas')
         return jsonify({"success": True})
     return jsonify({"success": False})
+
+@app.route('/obtener_orden/<int:mesa_id>')
+def obtener_orden(mesa_id):
+    mesa = db.session.get(Mesa, mesa_id)
+    if mesa:
+        return jsonify({"orden": mesa.orden or ""})
+    return jsonify({"orden": ""})
+
+@app.route('/guardar_orden/<int:mesa_id>', methods=['POST'])
+def guardar_orden(mesa_id):
+    mesa = db.session.get(Mesa, mesa_id)
+    if mesa:
+        data = request.get_json()
+        mesa.orden = data.get('orden', '')
+        db.session.commit()
+        socketio.emit('actualizar_mesas')
+        return jsonify({"success": True})
+    return jsonify({"success": False, "error": "Mesa no encontrada"})
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
