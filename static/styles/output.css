@@ -283,9 +283,6 @@
   .hidden {
     display: none;
   }
-  .table {
-    display: table;
-  }
   .size-15 {
     width: calc(var(--spacing) * 15);
     height: calc(var(--spacing) * 15);
@@ -295,9 +292,6 @@
   }
   .max-w-md {
     max-width: var(--container-md);
-  }
-  .border-collapse {
-    border-collapse: collapse;
   }
   .transform {
     transform: var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-skew-x,) var(--tw-skew-y,);
@@ -493,9 +487,6 @@
   }
   .text-yellow-700 {
     color: var(--color-yellow-700);
-  }
-  .underline {
-    text-decoration-line: underline;
   }
   .opacity-50 {
     opacity: 50%;
@@ -1409,6 +1400,7 @@ main {
   }
   .mesa-popover {
     position: absolute;
+    padding: auto;
     background: rgba(255, 254, 254, 0.95);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(221, 221, 221, 0.3);
@@ -1421,9 +1413,9 @@ main {
     pointer-events: none;
     display: flex;
     flex-direction: column;
-    justify-content: space-evenly;
-    align-items: space-evenly;
-    padding: 8px;
+    justify-content: center !important;
+    align-items: center !important;
+    padding: 4px !important;
   }
   .mesa-popover.show {
     opacity: 1;
@@ -1476,13 +1468,13 @@ main {
   .mesa-popover button {
     font-size: 10px !important;
     padding: 6px 8px !important;
-    margin: 2px 0 !important;
+    margin: 2px !important;
     border-radius: 4px !important;
     font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    width: 80%;
+    width: 90% !important;
     height: 35%;
   }
   @media (max-width: 480px) {

@@ -517,6 +517,7 @@ main {
 
      .mesa-popover {
       position: absolute;
+      padding: auto;
       background: rgba(255, 254, 254, 0.95);
       backdrop-filter: blur(10px);
       border: 1px solid rgba(221, 221, 221, 0.3);
@@ -529,9 +530,9 @@ main {
       pointer-events: none;
       display: flex;
       flex-direction: column;
-      justify-content: space-evenly;
-      align-items: space-evenly;
-      padding: 8px;
+      justify-content: center !important;
+      align-items: center !important;
+      padding: 4px !important;
     }
 
     .mesa-popover.show {
@@ -594,13 +595,13 @@ main {
     .mesa-popover button {
       font-size: 10px !important;
       padding: 6px 8px !important;
-      margin: 2px 0 !important;
+      margin: 2px !important;
       border-radius: 4px !important;
       font-weight: 500;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      width: 80%;
+      width: 90% !important;
       height: 35%;
     }
 
