@@ -7,17 +7,53 @@
   <p class="msj-bienvenida" id="bienvenida">Bienvenid@ {% if nombre %}{{ nombre }}{% endif %}</p>
   <p class="msj-actualmente" id="actualmente">Actualmente atendiendo al número: <strong id="atendiendo"></strong></p>
   <p class="msj-tu-numero" id="tu-numero">Tu número en la fila es: <strong>{{ numero }}</strong></p>
-
+  
   <p class="msj-estado" id="estado">Esperando tu turno...</p>
+  <br>
+  <div class="tiempo-espera-promedio" id="tiempo-espera-container">
+    <p class="msj-tiempo-espera" id="tiempo-espera">
+      ⏱️ Tiempo de espera estimado: <strong id="tiempo-promedio">Calculando...</strong>
+    </p>
+  </div>
 
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <script>
     const id = {{ numero }};
     const socket = io();
 
+    // Función para obtener y actualizar el tiempo de espera promedio
+    function actualizarTiempoEsperaPromedio() {
+      fetch('/tiempo_espera_promedio')
+        .then(response => response.json())
+        .then(data => {
+          const minutos = data.promedio_minutos;
+          const elemento = document.getElementById("tiempo-promedio");
+          
+          if (minutos <= 5) {
+            elemento.textContent = `${minutos} minutos ⚡`;
+            elemento.style.color = "#22c55e"; // Verde
+          } else if (minutos <= 15) {
+            elemento.textContent = `${minutos} minutos ⏰`;
+            elemento.style.color = "#f59e0b"; // Amarillo/Naranja
+          } else {
+            elemento.textContent = `${minutos} minutos ⏳`;
+            elemento.style.color = "#ef4444"; // Rojo
+          }
+        })
+        .catch(error => {
+          console.error('Error obteniendo tiempo de espera:', error);
+          document.getElementById("tiempo-promedio").textContent = "No disponible";
+        });
+    }
+
     socket.on("connect", () => {
       socket.emit("registrar_cliente", { id: id });
+      // Obtener tiempo de espera promedio al conectarse
+      actualizarTiempoEsperaPromedio();
     });
+
+    // Actualizar tiempo de espera cada 30 segundos
+    setInterval(actualizarTiempoEsperaPromedio, 30000);
 
     socket.on("es_tu_turno", (data) => {
       document.getElementById("estado").className = "font-bold text-6xl";
@@ -26,9 +62,16 @@
       document.getElementById("atendiendo").style.display = "none";
       document.getElementById("tu-numero").style.display = "none";
       document.getElementById("bienvenida").style.display = "none";
+      document.getElementById("tiempo-espera-container").style.display = "none";
     });
+    
     socket.on("actualizar_posicion",(data)=>{
       document.getElementById("atendiendo").innerText = Number(data.primero)-1;
+    });
+
+    // Actualizar tiempo de espera cuando hay cambios en la cola
+    socket.on("actualizar_cola", () => {
+      actualizarTiempoEsperaPromedio();
     });
   </script>
 </body>

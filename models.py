@@ -11,6 +11,7 @@ class Cliente(db.Model):
     joined_at = db.Column(db.DateTime, default=datetime.now())
     assigned_table = db.Column(db.Integer, nullable=True)
     sid = db.Column(db.String, nullable=True)  # Socket session ID
+    atendido_at = db.Column(db.DateTime, nullable=True)  # Cuándo fue atendido
 
 class Mesa(db.Model):
     id = db.Column(db.Integer, primary_key=True)

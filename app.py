@@ -24,6 +24,34 @@ def convert_to_chile_time(dt):
         return santiago_tz.localize(dt)
     return dt.astimezone(santiago_tz)
 
+def calcular_tiempo_espera_promedio():
+    """Calcula el tiempo de espera promedio basado en los últimos 6 clientes atendidos"""
+    try:
+        # Obtener los últimos 6 clientes que fueron atendidos (tienen atendido_at)
+        clientes_recientes = Cliente.query.filter(
+            Cliente.atendido_at.isnot(None)
+        ).order_by(Cliente.atendido_at.desc()).limit(6).all()
+        
+        if len(clientes_recientes) < 3:  # Necesitamos al menos 3 clientes para un promedio confiable
+            return 15 * 60  # Retornar 15 minutos por defecto en segundos
+        
+        tiempos_espera = []
+        for cliente in clientes_recientes:
+            if cliente.joined_at and cliente.atendido_at:
+                tiempo_espera = (cliente.atendido_at - cliente.joined_at).total_seconds()
+                tiempos_espera.append(tiempo_espera)
+        
+        if tiempos_espera:
+            promedio = sum(tiempos_espera) / len(tiempos_espera)
+            # Limitar el tiempo máximo a 60 minutos y mínimo a 2 minutos
+            return max(120, min(3600, promedio))  # Entre 2 y 60 minutos
+        else:
+            return 15 * 60  # 15 minutos por defecto
+            
+    except Exception as e:
+        print(f"Error calculando tiempo de espera promedio: {e}")
+        return 15 * 60  # 15 minutos por defecto
+
 def datetime_to_js_timestamp(dt):
     """Convierte un datetime a timestamp compatible con JavaScript"""
     if dt is None:
@@ -160,6 +188,7 @@ def liberar_mesa(mesa_id):
             if mesa.capacidad >= siguiente.cantidad_comensales:
                 # Asignación automática: la mesa tiene capacidad suficiente
                 siguiente.assigned_table = mesa.id
+                siguiente.atendido_at = get_chile_time()  # Registrar cuándo fue atendido
                 mesa.is_occupied = True
                 mesa.start_time = get_chile_time()
                 mesa.cliente_id = siguiente.id
@@ -252,8 +281,9 @@ def asignar_cliente_a_mesas():
         mesa_principal.cliente_id = cliente.id
         mesa_principal.llego_comensal = False
         
-        # Quitar al cliente de la cola
+        # Quitar al cliente de la cola y registrar cuándo fue atendido
         cliente.assigned_table = mesa_principal.id
+        cliente.atendido_at = get_chile_time()
         
         # Marcar las mesas adicionales como ocupadas (parte del mismo grupo)
         for mesa in mesas[1:]:
@@ -349,8 +379,9 @@ def asignar_cliente_multiple(cliente_id):
     mesa_principal.cliente_id = cliente.id
     mesa_principal.llego_comensal = False
     
-    # Quitar al cliente de la cola
+    # Quitar al cliente de la cola y registrar cuándo fue atendido
     cliente.assigned_table = mesa_principal.id
+    cliente.atendido_at = get_chile_time()
     
     # Marcar las mesas adicionales como ocupadas (parte del mismo grupo)
     for mesa in mesas_reservadas[1:]:
@@ -416,6 +447,7 @@ def cancelar_reserva(mesa_id):
         db.session.commit()
         if siguiente:
             siguiente.assigned_table = mesa.id
+            siguiente.atendido_at = get_chile_time()  # Registrar cuándo fue atendido
             mesa.is_occupied = True
             mesa.start_time = get_chile_time()
             mesa.cliente_id = siguiente.id
@@ -606,6 +638,19 @@ def guardar_orden(mesa_id):
         socketio.emit('actualizar_mesas')
         return jsonify({"success": True})
     return jsonify({"success": False, "error": "Mesa no encontrada"})
+
+@app.route('/tiempo_espera_promedio')
+def tiempo_espera_promedio():
+    """Endpoint para obtener el tiempo de espera promedio"""
+    promedio_segundos = calcular_tiempo_espera_promedio()
+    
+    # Convertir a minutos para mostrar
+    promedio_minutos = round(promedio_segundos / 60)
+    
+    return jsonify({
+        "promedio_segundos": promedio_segundos,
+        "promedio_minutos": promedio_minutos
+    })
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
