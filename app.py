@@ -278,70 +278,86 @@ def liberar_mesa(mesa_id):
         if not mesa or not mesa.is_occupied:
             return jsonify({"success": False, "error": "Mesa no encontrada o no está ocupada"})
         
-        # Calcular tiempo usado
-        if mesa.start_time:
-            start_time_chile = convert_to_chile_time(mesa.start_time)
-            current_time_chile = get_chile_time()
-            tiempo_usado = (current_time_chile - start_time_chile).total_seconds()
-        else:
-            tiempo_usado = 0
+        # Obtener el cliente_id antes de limpiar la mesa
+        cliente_id = mesa.cliente_id
         
-        # Crear registro de uso
-        uso = UsoMesa(mesa_id=mesa.id, duracion=tiempo_usado)
-        db.session.add(uso)
+        # Buscar TODAS las mesas asignadas al mismo cliente
+        mesas_del_cliente = Mesa.query.filter_by(cliente_id=cliente_id, is_occupied=True).all()
         
-        # Limpiar la mesa
-        mesa.is_occupied = False
-        mesa.start_time = None
-        mesa.cliente_id = None
-        mesa.llego_comensal = False
-        mesa.orden = None
+        print(f"Liberando mesa {mesa_id} del cliente {cliente_id}. Total mesas del cliente: {len(mesas_del_cliente)}")
         
-        # Buscar el PRIMER cliente en la fila (respetando orden de llegada)
-        siguiente = None
-        if not mesa.reservada:
-            siguiente = buscar_siguiente_cliente_en_orden()
-            
-            # Verificar si el primer cliente PUEDE ser asignado a esta mesa
-            if siguiente and puede_asignar_cliente_a_mesa(siguiente, mesa):
-                # El primer cliente SÍ cabe en la mesa - asignar automáticamente
-                siguiente.assigned_table = mesa.id
-                siguiente.atendido_at = get_chile_time()
-                mesa.is_occupied = True
-                mesa.start_time = get_chile_time()
-                mesa.cliente_id = siguiente.id
-                mesa.llego_comensal = False
-                
-                # Limpiar sesión si corresponde
-                if 'cliente_id' in session and session['cliente_id'] == siguiente.id:
-                    session.pop('cliente_id', None)
-                
-                print(f"Mesa {mesa_id} (capacidad {mesa.capacidad}) liberada y reasignada automáticamente a primer cliente {siguiente.id} ({siguiente.cantidad_comensales} comensales)")
-            elif siguiente:
-                # El primer cliente NO cabe - reservar mesa para asignación manual
-                mesa.reservada = True
-                print(f"Mesa {mesa_id} (capacidad {mesa.capacidad}) liberada - primer cliente {siguiente.id} ({siguiente.cantidad_comensales} comensales) no cabe. Mesa queda RESERVADA para asignación manual")
-                siguiente = None  # No notificar automáticamente
+        # Liberar TODAS las mesas del cliente
+        for mesa_cliente in mesas_del_cliente:
+            # Calcular tiempo usado para cada mesa
+            if mesa_cliente.start_time:
+                start_time_chile = convert_to_chile_time(mesa_cliente.start_time)
+                current_time_chile = get_chile_time()
+                tiempo_usado = (current_time_chile - start_time_chile).total_seconds()
             else:
-                # No hay clientes en espera
-                print(f"Mesa {mesa_id} (capacidad {mesa.capacidad}) liberada - no hay clientes en espera. Mesa queda disponible")
-        else:
-            print(f"Mesa {mesa_id} permanece reservada")
+                tiempo_usado = 0
+            
+            # Crear registro de uso para cada mesa
+            uso = UsoMesa(mesa_id=mesa_cliente.id, duracion=tiempo_usado)
+            db.session.add(uso)
+            
+            # Limpiar cada mesa
+            mesa_cliente.is_occupied = False
+            mesa_cliente.start_time = None
+            mesa_cliente.cliente_id = None
+            mesa_cliente.llego_comensal = False
+            mesa_cliente.orden = None
+            
+            print(f"Mesa {mesa_cliente.id} liberada automáticamente")
+        
+        # Ahora procesar asignaciones automáticas para cada mesa liberada
+        mesas_asignadas = []
+        for mesa_liberada in mesas_del_cliente:
+            # Solo procesar si la mesa no está reservada
+            if not mesa_liberada.reservada:
+                siguiente = buscar_siguiente_cliente_en_orden()
+                
+                # Verificar si el primer cliente PUEDE ser asignado a esta mesa
+                if siguiente and puede_asignar_cliente_a_mesa(siguiente, mesa_liberada):
+                    # El primer cliente SÍ cabe en la mesa - asignar automáticamente
+                    siguiente.assigned_table = mesa_liberada.id
+                    siguiente.atendido_at = get_chile_time()
+                    mesa_liberada.is_occupied = True
+                    mesa_liberada.start_time = get_chile_time()
+                    mesa_liberada.cliente_id = siguiente.id
+                    mesa_liberada.llego_comensal = False
+                    
+                    # Limpiar sesión si corresponde
+                    if 'cliente_id' in session and session['cliente_id'] == siguiente.id:
+                        session.pop('cliente_id', None)
+                    
+                    mesas_asignadas.append((mesa_liberada.id, siguiente))
+                    print(f"Mesa {mesa_liberada.id} (capacidad {mesa_liberada.capacidad}) reasignada automáticamente a primer cliente {siguiente.id} ({siguiente.cantidad_comensales} comensales)")
+                elif siguiente:
+                    # El primer cliente NO cabe - reservar mesa para asignación manual
+                    mesa_liberada.reservada = True
+                    print(f"Mesa {mesa_liberada.id} (capacidad {mesa_liberada.capacidad}) - primer cliente {siguiente.id} ({siguiente.cantidad_comensales} comensales) no cabe. Mesa queda RESERVADA para asignación manual")
+                else:
+                    # No hay clientes en espera
+                    print(f"Mesa {mesa_liberada.id} (capacidad {mesa_liberada.capacidad}) - no hay clientes en espera. Mesa queda disponible")
         
         # Hacer commit una sola vez al final
         db.session.commit()
         
-        # Notificar cliente asignado después del commit exitoso
-        if siguiente and not mesa.reservada:
-            if siguiente.sid:
-                socketio.emit("es_tu_turno", {"mesa": mesa.id}, to=siguiente.sid)
+        # Notificar clientes asignados después del commit exitoso
+        for mesa_id_asignada, cliente_asignado in mesas_asignadas:
+            if cliente_asignado.sid:
+                socketio.emit("es_tu_turno", {"mesa": mesa_id_asignada}, to=cliente_asignado.sid)
         
         # Emitir actualizaciones
         socketio.emit('actualizar_mesas')
         socketio.emit('actualizar_lista_clientes')
         enviar_estado_cola()
         
-        return jsonify({"success": True})
+        return jsonify({
+            "success": True, 
+            "mesas_liberadas": [m.id for m in mesas_del_cliente],
+            "mensaje": f"Se liberaron {len(mesas_del_cliente)} mesa(s) del cliente {cliente_id}"
+        })
         
     except Exception as e:
         db.session.rollback()
