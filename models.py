@@ -8,7 +8,7 @@ class Cliente(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=True)
     cantidad_comensales = db.Column(db.Integer, nullable=True)
-    joined_at = db.Column(db.DateTime, default=datetime.now())
+    joined_at = db.Column(db.DateTime, default=datetime.now)  # Sin paréntesis
     assigned_table = db.Column(db.Integer, nullable=True)
     sid = db.Column(db.String, nullable=True)  # Socket session ID
     atendido_at = db.Column(db.DateTime, nullable=True)  # Cuándo fue atendido
@@ -28,7 +28,7 @@ class UsoMesa(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     mesa_id = db.Column(db.Integer, db.ForeignKey('mesa.id'), nullable=False)
     duracion = db.Column(db.Integer)  # duración en segundos
-    timestamp = db.Column(db.DateTime, default=datetime.now())
+    timestamp = db.Column(db.DateTime, default=datetime.now)  # Sin paréntesis
     
 class Trabajador(db.Model):
     id = db.Column(db.Integer, primary_key=True)

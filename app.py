@@ -4,12 +4,14 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, emit, join_room
 from functools import wraps
 from models import UsoMesa, db, Cliente, Mesa
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 import statistics
 from flask_migrate import Migrate
 from flask import render_template, request, redirect, url_for, session, flash
 from models import Trabajador
+import secrets
+# from flask_wtf.csrf import CSRFProtect
 
 def get_chile_time():
     santiago_tz = pytz.timezone('America/Santiago')
@@ -23,6 +25,48 @@ def convert_to_chile_time(dt):
     if dt.tzinfo is None:
         return santiago_tz.localize(dt)
     return dt.astimezone(santiago_tz)
+
+def worker_required(f):
+    """Decorador para proteger endpoints que requieren sesión de trabajador"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'trabajador_id' not in session:
+            return jsonify({"success": False, "error": "No autorizado - se requiere sesión de trabajador"}), 401
+        
+        # Renovar sesión en cada request autenticado
+        session.permanent = True
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
+# Rate limiting básico para login (diccionario simple para desarrollo)
+login_attempts = {}
+
+def check_rate_limit(ip_address, max_attempts=5, window_minutes=15):
+    """Rate limiting básico para prevenir ataques de fuerza bruta"""
+    now = datetime.now()
+    window_start = now - timedelta(minutes=window_minutes)
+    
+    # Limpiar intentos antiguos
+    if ip_address in login_attempts:
+        login_attempts[ip_address] = [
+            attempt for attempt in login_attempts[ip_address] 
+            if attempt > window_start
+        ]
+    else:
+        login_attempts[ip_address] = []
+    
+    # Verificar si se excedió el límite
+    if len(login_attempts[ip_address]) >= max_attempts:
+        return False
+    
+    return True
+
+def record_login_attempt(ip_address):
+    """Registrar un intento de login"""
+    if ip_address not in login_attempts:
+        login_attempts[ip_address] = []
+    login_attempts[ip_address].append(datetime.now())
 
 def calcular_tiempo_espera_promedio():
     """Calcula el tiempo de espera promedio basado en los últimos 6 clientes atendidos"""
@@ -64,7 +108,29 @@ def datetime_to_js_timestamp(dt):
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite3'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = 'clave_super_secreta_123'
+
+# Configuración de seguridad mejorada
+if os.environ.get('FLASK_ENV') == 'production':
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
+else:
+    app.config['SECRET_KEY'] = secrets.token_hex(32)  # Generar clave aleatoria para desarrollo
+
+# Configuración de cookies seguras
+app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_ENV') == 'production'
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)  # Expiración de 8 horas
+
+# Inicializar protección CSRF (deshabilitado temporalmente para desarrollo)
+# csrf = CSRFProtect(app)
+
+# Excluir endpoints de API de CSRF (para compatibilidad con JSON)
+# csrf.exempt('/tiempo_espera_promedio')
+# csrf.exempt('/clientes')
+# Excluir endpoints públicos de autenticación
+# csrf.exempt('/login')
+# csrf.exempt('/registro')
+
 db.init_app(app)
 migrate = Migrate(app, db)
 
@@ -83,18 +149,43 @@ def login_required(f):
     return decorated_function
 
 def initialize_tables():
-    with app.app_context():
+    """Inicializar tablas y datos básicos de la aplicación"""
+    try:
+        # Solo crear tablas si no existen (para compatibility con migraciones)
         db.create_all()
+        
         mesas_existentes = db.session.query(db.func.count(Mesa.id)).scalar() or 0
         mesas_deseadas = 8
         
         if mesas_existentes < mesas_deseadas:
             for i in range(mesas_existentes, mesas_deseadas):
-                db.session.add(Mesa())
+                nueva_mesa = Mesa(capacidad=4)  # Capacidad por defecto
+                db.session.add(nueva_mesa)
             db.session.commit()
+            print(f"Inicializadas {mesas_deseadas - mesas_existentes} mesas nuevas")
+        else:
+            print(f"Ya existen {mesas_existentes} mesas en la base de datos")
+            
+    except Exception as e:
+        print(f"Error inicializando tablas: {e}")
+        db.session.rollback()
 
-if __name__ == "__main__":
-    initialize_tables()
+# Solo inicializar si se ejecuta directamente, no en producción
+def init_app_data():
+    """Inicializar datos de la aplicación si es necesario"""
+    with app.app_context():  # Agregar contexto de aplicación
+        # Siempre inicializar tablas básicas, tanto en desarrollo como producción
+        initialize_tables()
+
+# En producción, inicializar solo si es necesario
+try:
+    with app.app_context():
+        # Verificar si las tablas existen
+        Mesa.query.first()
+except Exception:
+    # Las tablas no existen, inicializar
+    with app.app_context():
+        initialize_tables()
 
 @app.route('/cliente')
 def cliente(nombre=None, cantidad_comensales=None):
@@ -163,6 +254,7 @@ def enviar_estado_cola():
 
 
 @app.route('/liberar_mesa/<int:mesa_id>', methods=['POST'])
+@worker_required
 def liberar_mesa(mesa_id):
     try:
         mesa = db.session.get(Mesa, mesa_id)
@@ -437,6 +529,7 @@ def asignar_cliente_multiple(cliente_id):
         return jsonify({"success": False, "error": f"Error interno: {str(e)}"})
 
 @app.route('/ocupar_mesa/<int:mesa_id>', methods=['POST'])
+@worker_required
 def ocupar_mesa(mesa_id):
     mesa = db.session.get(Mesa, mesa_id)
     if mesa and not mesa.is_occupied:
@@ -450,6 +543,7 @@ def ocupar_mesa(mesa_id):
     return jsonify({"success": False})
 
 @app.route('/reservar_mesa/<int:mesa_id>', methods=['POST'])
+@worker_required
 def reservar_mesa(mesa_id):
     mesa = db.session.get(Mesa, mesa_id)
     if mesa and not mesa.reservada:
@@ -460,6 +554,7 @@ def reservar_mesa(mesa_id):
     return jsonify({"success": False})
 
 @app.route('/cancelar_reserva/<int:mesa_id>', methods=['POST'])
+@worker_required
 def cancelar_reserva(mesa_id):
     try:
         mesa = db.session.get(Mesa, mesa_id)
@@ -518,20 +613,37 @@ def estadisticas():
 
 @socketio.on("registrar_cliente")
 def registrar_cliente(data):
-    cliente_id = data.get("id")
-    sid = request.sid
-    cliente = db.session.get(Cliente, cliente_id)
-    if cliente:
+    try:
+        cliente_id = data.get("id")
+        sid = request.sid
+        
+        # Validar que el cliente_id esté en la sesión para prevenir suplantación
+        if 'cliente_id' not in session or session['cliente_id'] != cliente_id:
+            print(f"Intento de registro no autorizado para cliente {cliente_id} desde SID {sid}")
+            return False
+        
+        cliente = db.session.get(Cliente, cliente_id)
+        if not cliente:
+            print(f"Cliente {cliente_id} no encontrado en la base de datos")
+            return False
+            
+        # Actualizar SID del cliente
         cliente.sid = sid
         db.session.commit()
+        
         join_room(sid)
         socketio.emit('nuevo_cliente', {
             'cliente_id': cliente.id,
             'joined_at': cliente.joined_at.strftime('%Y-%m-%d %H:%M:%S')
         })
         enviar_estado_cola()
+        
+    except Exception as e:
+        print(f"Error en registrar_cliente: {e}")
+        return False
 
 @app.route('/clientes')
+@worker_required
 def obtener_clientes():
     clientes = Cliente.query.filter_by(assigned_table=None).order_by(Cliente.joined_at).all()
     return jsonify([
@@ -587,17 +699,38 @@ def registro():
 
     return render_template('registro_mesero.html')
 
+@app.route('/')
+def index():
+    """Ruta principal - redirige al login"""
+    return redirect(url_for('login'))
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
+        client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
+        
+        # Verificar rate limiting
+        if not check_rate_limit(client_ip):
+            flash('Demasiados intentos de login. Intenta de nuevo en 15 minutos.')
+            return render_template('login.html'), 429
+        
         email = request.form['email']
         password = request.form['password']
+        
+        # Registrar el intento
+        record_login_attempt(client_ip)
+        
         trabajador = Trabajador.query.filter_by(email=email).first()
 
         if trabajador and trabajador.check_password(password):
+            # Login exitoso - limpiar intentos de este IP
+            if client_ip in login_attempts:
+                del login_attempts[client_ip]
+            
             session['trabajador_id'] = trabajador.id
+            session.permanent = True  # Hacer la sesión permanente para usar PERMANENT_SESSION_LIFETIME
             flash('Bienvenido, ' + trabajador.username)
-            return redirect(url_for('trabajador'))  # o tu dashboard
+            return redirect(url_for('trabajador'))
         else:
             flash('Credenciales incorrectas')
     
@@ -605,8 +738,9 @@ def login():
 
 @app.route('/logout')
 def logout():
-    session.pop('trabajador_id', None)
-    flash('Sesión cerrada')
+    # Limpiar toda la sesión para prevenir fijación/contaminación
+    session.clear()
+    flash('Sesión cerrada correctamente')
     return redirect(url_for('login'))
 
 
@@ -651,6 +785,7 @@ def qr_landing():
     return render_template('qr_landing.html')
 
 @app.route('/confirmar_llegada/<int:mesa_id>', methods=['POST'])
+@worker_required
 def confirmar_llegada(mesa_id):
     try:
         mesa = db.session.get(Mesa, mesa_id)
@@ -677,6 +812,7 @@ def confirmar_llegada(mesa_id):
         return jsonify({"success": False, "error": f"Error interno: {str(e)}"})
 
 @app.route('/obtener_orden/<int:mesa_id>')
+@worker_required
 def obtener_orden(mesa_id):
     mesa = db.session.get(Mesa, mesa_id)
     if mesa:
@@ -684,6 +820,7 @@ def obtener_orden(mesa_id):
     return jsonify({"orden": ""})
 
 @app.route('/guardar_orden/<int:mesa_id>', methods=['POST'])
+@worker_required
 def guardar_orden(mesa_id):
     try:
         mesa = db.session.get(Mesa, mesa_id)
@@ -724,5 +861,13 @@ def tiempo_espera_promedio():
     })
 
 if __name__ == "__main__":
-    port = int(os.environ.get('PORT', 5000))
-    socketio.run(app, host='0.0.0.0', port=port, debug=False)
+    # Inicializar datos de la aplicación
+    init_app_data()
+    # Configuración para desarrollo vs producción
+    if os.environ.get('FLASK_ENV') == 'production':
+        # Configuración para Render (producción)
+        port = int(os.environ.get('PORT', 5000))
+        socketio.run(app, host='0.0.0.0', port=port, debug=False)
+    else:
+        # Configuración para desarrollo local
+        socketio.run(app, debug=True)
