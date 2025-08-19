@@ -26,6 +26,23 @@ def convert_to_chile_time(dt):
         return santiago_tz.localize(dt)
     return dt.astimezone(santiago_tz)
 
+def buscar_siguiente_cliente_en_orden():
+    """Busca al PRIMER cliente en la fila (sin saltar a nadie por capacidad)"""
+    try:
+        # Siempre tomar el primer cliente en orden de llegada
+        primer_cliente = Cliente.query.filter_by(assigned_table=None).order_by(Cliente.joined_at).first()
+        return primer_cliente
+        
+    except Exception as e:
+        print(f"Error buscando primer cliente: {e}")
+        return None
+
+def puede_asignar_cliente_a_mesa(cliente, mesa):
+    """Verifica si un cliente específico puede ser asignado a una mesa específica"""
+    if not cliente or not mesa or not cliente.cantidad_comensales:
+        return False
+    return cliente.cantidad_comensales <= mesa.capacidad
+
 def worker_required(f):
     """Decorador para proteger endpoints que requieren sesión de trabajador"""
     @wraps(f)
@@ -280,15 +297,14 @@ def liberar_mesa(mesa_id):
         mesa.llego_comensal = False
         mesa.orden = None
         
-        # Buscar el siguiente cliente solo si la mesa no está reservada
+        # Buscar el PRIMER cliente en la fila (respetando orden de llegada)
         siguiente = None
         if not mesa.reservada:
-            siguiente = Cliente.query.filter_by(assigned_table=None).order_by(Cliente.joined_at).first()
-        
-        # Procesar asignación automática si hay siguiente cliente
-        if siguiente and not mesa.reservada:
-            if mesa.capacidad >= siguiente.cantidad_comensales:
-                # Asignación directa: mesa tiene capacidad suficiente
+            siguiente = buscar_siguiente_cliente_en_orden()
+            
+            # Verificar si el primer cliente PUEDE ser asignado a esta mesa
+            if siguiente and puede_asignar_cliente_a_mesa(siguiente, mesa):
+                # El primer cliente SÍ cabe en la mesa - asignar automáticamente
                 siguiente.assigned_table = mesa.id
                 siguiente.atendido_at = get_chile_time()
                 mesa.is_occupied = True
@@ -299,41 +315,26 @@ def liberar_mesa(mesa_id):
                 # Limpiar sesión si corresponde
                 if 'cliente_id' in session and session['cliente_id'] == siguiente.id:
                     session.pop('cliente_id', None)
-            else:
-                # Capacidad insuficiente: reservar mesas
+                
+                print(f"Mesa {mesa_id} (capacidad {mesa.capacidad}) liberada y reasignada automáticamente a primer cliente {siguiente.id} ({siguiente.cantidad_comensales} comensales)")
+            elif siguiente:
+                # El primer cliente NO cabe - reservar mesa para asignación manual
                 mesa.reservada = True
-                
-                # Buscar mesas adicionales
-                mesas_disponibles = Mesa.query.filter_by(is_occupied=False, reservada=False).all()
-                capacidad_total = sum(m.capacidad for m in mesas_disponibles) + mesa.capacidad
-                
-                if capacidad_total >= siguiente.cantidad_comensales:
-                    # Reservar mesas adicionales
-                    capacidad_acumulada = mesa.capacidad
-                    mesas_a_reservar = [mesa]
-                    
-                    for mesa_adicional in mesas_disponibles:
-                        if capacidad_acumulada >= siguiente.cantidad_comensales:
-                            break
-                        mesa_adicional.reservada = True
-                        mesas_a_reservar.append(mesa_adicional)
-                        capacidad_acumulada += mesa_adicional.capacidad
+                print(f"Mesa {mesa_id} (capacidad {mesa.capacidad}) liberada - primer cliente {siguiente.id} ({siguiente.cantidad_comensales} comensales) no cabe. Mesa queda RESERVADA para asignación manual")
+                siguiente = None  # No notificar automáticamente
+            else:
+                # No hay clientes en espera
+                print(f"Mesa {mesa_id} (capacidad {mesa.capacidad}) liberada - no hay clientes en espera. Mesa queda disponible")
+        else:
+            print(f"Mesa {mesa_id} permanece reservada")
         
         # Hacer commit una sola vez al final
         db.session.commit()
         
         # Notificar cliente asignado después del commit exitoso
-        if siguiente and not mesa.reservada and mesa.capacidad >= siguiente.cantidad_comensales:
+        if siguiente and not mesa.reservada:
             if siguiente.sid:
                 socketio.emit("es_tu_turno", {"mesa": mesa.id}, to=siguiente.sid)
-        elif siguiente and mesa.reservada:
-            # Notificar que necesita múltiples mesas
-            socketio.emit('cliente_necesita_multiples_mesas', {
-                'cliente_id': siguiente.id,
-                'cliente_nombre': siguiente.nombre,
-                'cantidad_comensales': siguiente.cantidad_comensales,
-                'mesas_reservadas': [m.id for m in mesas_a_reservar if 'mesas_a_reservar' in locals()]
-            })
         
         # Emitir actualizaciones
         socketio.emit('actualizar_mesas')
@@ -564,11 +565,12 @@ def cancelar_reserva(mesa_id):
         # Cancelar la reserva
         mesa.reservada = False
         
-        # Buscar siguiente cliente
-        siguiente = Cliente.query.filter_by(assigned_table=None).order_by(Cliente.joined_at).first()
+        # Buscar el PRIMER cliente en la fila (respetando orden de llegada)
+        siguiente = buscar_siguiente_cliente_en_orden()
         
-        if siguiente:
-            # Asignar el cliente a la mesa
+        # Verificar si el primer cliente PUEDE ser asignado a esta mesa
+        if siguiente and puede_asignar_cliente_a_mesa(siguiente, mesa):
+            # El primer cliente SÍ cabe en esta mesa - asignar automáticamente
             siguiente.assigned_table = mesa.id
             siguiente.atendido_at = get_chile_time()
             mesa.is_occupied = True
@@ -579,6 +581,16 @@ def cancelar_reserva(mesa_id):
             # Limpiar sesión si corresponde
             if 'cliente_id' in session and session['cliente_id'] == siguiente.id:
                 session.pop('cliente_id', None)
+            
+            print(f"Mesa {mesa_id} (capacidad {mesa.capacidad}) reserva cancelada y asignada automáticamente a primer cliente {siguiente.id} ({siguiente.cantidad_comensales} comensales)")
+        elif siguiente:
+            # El primer cliente NO cabe - volver a reservar mesa para asignación manual
+            mesa.reservada = True
+            print(f"Mesa {mesa_id} (capacidad {mesa.capacidad}) reserva cancelada - primer cliente {siguiente.id} ({siguiente.cantidad_comensales} comensales) no cabe. Mesa queda RESERVADA para asignación manual")
+            siguiente = None  # No notificar automáticamente
+        else:
+            # No hay clientes en espera - mesa queda libre
+            print(f"Mesa {mesa_id} (capacidad {mesa.capacidad}) reserva cancelada - no hay clientes en espera. Mesa queda disponible")
         
         # Hacer commit una sola vez
         db.session.commit()
