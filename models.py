@@ -63,7 +63,7 @@ class Trabajador(db.Model):
 class Pedidos(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     mesa_id = db.Column(db.Integer, db.ForeignKey('mesa.id'), nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.now())
+    timestamp = db.Column(db.DateTime, default=get_chile_time)  # Usar función de hora de Chile
     estado = db.Column(db.String(20), default='pendiente')
     
     mesa = db.relationship('Mesa', backref='pedidos')
