@@ -18,6 +18,14 @@
     
     <p class="msj-estado" id="estado">Esperando tu turno...</p>
     
+    <!-- Botón para activar notificaciones (oculto por defecto) -->
+    <div id="notification-prompt" class="notification-prompt hidden">
+      <p class="notification-message">📱 Activa las notificaciones para saber cuando sea tu turno</p>
+      <button onclick="solicitarPermisoNotificaciones()" class="notification-button">
+        🔔 Activar Notificaciones
+      </button>
+    </div>
+    
     <!-- Cronómetro de 10 minutos (oculto inicialmente) -->
     <div id="cronometro-container" class="cronometro-container hidden">
       <div class="cronometro-content">
@@ -50,6 +58,101 @@
     const id = {{ numero }};
     const socket = io();
     let cronometroInterval = null;
+
+    // ==================== SISTEMA DE NOTIFICACIONES PUSH ====================
+    
+    // Verificar soporte para notificaciones
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+      console.log('El navegador soporta notificaciones push');
+    } else {
+      console.log('El navegador NO soporta notificaciones push');
+    }
+
+    // Registrar Service Worker
+    async function registrarServiceWorker() {
+      try {
+        const registration = await navigator.serviceWorker.register('/static/sw.js');
+        console.log('Service Worker registrado:', registration);
+        return registration;
+      } catch (error) {
+        console.error('Error registrando Service Worker:', error);
+        return null;
+      }
+    }
+
+    // Solicitar permisos de notificación
+    async function solicitarPermisoNotificaciones() {
+      try {
+        const permission = await Notification.requestPermission();
+        console.log('Permiso de notificaciones:', permission);
+        
+        if (permission === 'granted') {
+          mostrarNotificacionBienvenida();
+          // Ocultar el botón de solicitud de permisos
+          document.getElementById('notification-prompt').classList.add('hidden');
+          return true;
+        } else {
+          console.log('Permisos de notificación denegados');
+          // Mostrar el botón para volver a solicitar permisos
+          document.getElementById('notification-prompt').classList.remove('hidden');
+          return false;
+        }
+      } catch (error) {
+        console.error('Error solicitando permisos:', error);
+        return false;
+      }
+    }
+
+    // Mostrar notificación de bienvenida
+    function mostrarNotificacionBienvenida() {
+      if (Notification.permission === 'granted') {
+        new Notification('🍽️ Restaurante Alleria', {
+          body: 'Te notificaremos cuando sea tu turno. ¡Mantén las notificaciones activadas!',
+          icon: '/static/images/logo-alleria.png',
+          badge: '/static/images/logo-alleria.png'
+        });
+      }
+    }
+
+    // Mostrar notificación cuando sea el turno
+    function mostrarNotificacionTurno(mesa) {
+      if (Notification.permission === 'granted') {
+        const notificacion = new Notification('🎉 ¡Es tu turno!', {
+          body: `Tu mesa ${mesa} está lista. Tienes 10 minutos para llegar.`,
+          icon: '/static/images/logo-alleria.png',
+          badge: '/static/images/logo-alleria.png',
+          vibrate: [200, 100, 200, 100, 200],
+          requireInteraction: true // Mantiene la notificación hasta que el usuario interactúe
+        });
+
+        // Cerrar automáticamente después de 10 segundos si no se ha cerrado
+        setTimeout(() => {
+          notificacion.close();
+        }, 10000);
+
+        // Manejar clic en la notificación
+        notificacion.onclick = function() {
+          window.focus();
+          notificacion.close();
+        };
+      }
+    }
+
+    // Inicializar notificaciones al cargar la página
+    window.addEventListener('load', async () => {
+      if ('serviceWorker' in navigator && 'Notification' in window) {
+        await registrarServiceWorker();
+        
+        // Solicitar permisos automáticamente después de 2 segundos
+        setTimeout(async () => {
+          if (Notification.permission === 'default') {
+            await solicitarPermisoNotificaciones();
+          }
+        }, 2000);
+      }
+    });
+
+    // ==================== FIN SISTEMA DE NOTIFICACIONES ====================
 
     // Función para mostrar/ocultar el popover
     function toggleInfoPopover() {
@@ -149,6 +252,9 @@
       document.getElementById("tu-numero").style.display = "none";
       document.getElementById("bienvenida").style.display = "none";
       document.getElementById("tiempo-espera-container").style.display = "none";
+      
+      // Mostrar notificación push
+      mostrarNotificacionTurno(data.mesa);
       
       // Iniciar cronómetro de 10 minutos
       iniciarCronometro();
