@@ -131,7 +131,20 @@ if os.environ.get('DATABASE_URL'):
     # Render proporciona postgres:// pero SQLAlchemy requiere postgresql://
     if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    
+    # Agregar parámetros de zona horaria para PostgreSQL
+    if '?' in database_url:
+        database_url += '&timezone=America/Santiago'
+    else:
+        database_url += '?timezone=America/Santiago'
+    
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    # Configuración adicional para PostgreSQL
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'connect_args': {
+            'options': '-c timezone=America/Santiago'
+        }
+    }
 else:
     # Usar SQLite en desarrollo local
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite3'
