@@ -1,14 +1,20 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
+import pytz
 
 db = SQLAlchemy()
+
+def get_chile_time():
+    """Función para obtener la hora actual de Chile"""
+    santiago_tz = pytz.timezone('America/Santiago')
+    return datetime.now(santiago_tz).replace(tzinfo=None)  # Remover tzinfo para compatibilidad con SQLAlchemy
 
 class Cliente(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=True)
     cantidad_comensales = db.Column(db.Integer, nullable=True)
-    joined_at = db.Column(db.DateTime, default=datetime.now)  # Sin paréntesis
+    joined_at = db.Column(db.DateTime, default=get_chile_time)  # Usar función de hora de Chile
     assigned_table = db.Column(db.Integer, nullable=True)
     sid = db.Column(db.String, nullable=True)  # Socket session ID
     atendido_at = db.Column(db.DateTime, nullable=True)  # Cuándo fue atendido
@@ -28,7 +34,7 @@ class UsoMesa(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     mesa_id = db.Column(db.Integer, db.ForeignKey('mesa.id'), nullable=False)
     duracion = db.Column(db.Integer)  # duración en segundos
-    timestamp = db.Column(db.DateTime, default=datetime.now)  # Sin paréntesis
+    timestamp = db.Column(db.DateTime, default=get_chile_time)  # Usar función de hora de Chile
     
 class Trabajador(db.Model):
     id = db.Column(db.Integer, primary_key=True)

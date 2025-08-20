@@ -61,7 +61,7 @@ login_attempts = {}
 
 def check_rate_limit(ip_address, max_attempts=5, window_minutes=15):
     """Rate limiting básico para prevenir ataques de fuerza bruta"""
-    now = datetime.now()
+    now = get_chile_time()
     window_start = now - timedelta(minutes=window_minutes)
     
     # Limpiar intentos antiguos
@@ -83,7 +83,7 @@ def record_login_attempt(ip_address):
     """Registrar un intento de login"""
     if ip_address not in login_attempts:
         login_attempts[ip_address] = []
-    login_attempts[ip_address].append(datetime.now())
+    login_attempts[ip_address].append(get_chile_time())
 
 def calcular_tiempo_espera_promedio():
     """Calcula el tiempo de espera promedio basado en los últimos 6 clientes atendidos"""
@@ -132,14 +132,8 @@ if os.environ.get('DATABASE_URL'):
     if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
     
-    # Agregar parámetros de zona horaria para PostgreSQL
-    if '?' in database_url:
-        database_url += '&timezone=America/Santiago'
-    else:
-        database_url += '?timezone=America/Santiago'
-    
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-    # Configuración adicional para PostgreSQL
+    # Configurar zona horaria para PostgreSQL
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
         'connect_args': {
             'options': '-c timezone=America/Santiago'
