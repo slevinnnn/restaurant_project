@@ -272,7 +272,7 @@ def cliente(nombre=None, cantidad_comensales=None):
 def trabajador():
     current_time = get_chile_time()
     clientes = Cliente.query.filter_by(assigned_table=None).order_by(Cliente.joined_at).all()
-    mesas = Mesa.query.all()
+    mesas = Mesa.query.order_by(Mesa.id).all()  # Ordenar por ID para mantener orden consistente
     
     # Determinar qué mesas están recién asignadas
     for mesa in mesas:
