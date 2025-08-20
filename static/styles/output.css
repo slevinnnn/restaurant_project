@@ -1672,6 +1672,97 @@ main {
     transform: scale(1.05);
   }
 }
+.cronometro-container {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(15px);
+  border-radius: 20px;
+  padding: 30px;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  border: 2px solid #e5e7eb;
+  z-index: 1000;
+  min-width: 300px;
+  animation: cronometroFadeIn 0.5s ease-out;
+}
+.cronometro-display {
+  font-size: 4rem;
+  font-weight: bold;
+  margin: 20px 0;
+  font-family: 'Courier New', monospace;
+  transition: color 0.3s ease;
+}
+.cronometro-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 10px;
+}
+.cronometro-message {
+  font-size: 1.1rem;
+  color: #6b7280;
+  margin-top: 15px;
+  line-height: 1.4;
+}
+.cronometro-verde {
+  color: #10b981;
+}
+.cronometro-amarillo {
+  color: #f59e0b;
+}
+.cronometro-rojo {
+  color: #ef4444;
+  animation: cronometroPulse 1s infinite;
+}
+@keyframes cronometroFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+@keyframes cronometroPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+}
+.cronometro-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(3px);
+  z-index: 999;
+}
+@media (max-width: 640px) {
+  .cronometro-container {
+    padding: 20px;
+    min-width: 280px;
+    margin: 0 20px;
+  }
+  .cronometro-display {
+    font-size: 3rem;
+  }
+  .cronometro-title {
+    font-size: 1.3rem;
+  }
+  .cronometro-message {
+    font-size: 1rem;
+  }
+}
 @property --tw-rotate-x {
   syntax: "*";
   inherits: false;

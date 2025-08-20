@@ -2,34 +2,54 @@
 <html>
 <head><title>Cliente</title>
   <link rel="stylesheet" href="/static/styles/output.css">
+  <link href="https://fonts.googleapis.com/css2?family=Industry+Inc:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <p class="msj-bienvenida" id="bienvenida">Bienvenid@ {% if nombre %}{{ nombre }}{% endif %}</p>
-  <p class="msj-actualmente" id="actualmente">Actualmente atendiendo al número: <strong id="atendiendo"></strong></p>
-  <p class="msj-tu-numero" id="tu-numero">Tu número en la fila es: <strong>{{ numero }}</strong></p>
-  
-  <p class="msj-estado" id="estado">Esperando tu turno...</p>
-  <br>
-  <div class="tiempo-espera-promedio" id="tiempo-espera-container">
-    <p class="msj-tiempo-espera" id="tiempo-espera" onclick="toggleInfoPopover()" style="cursor: pointer;">
-      ⏱️ Tiempo de espera estimado: <strong id="tiempo-promedio">Calculando...</strong>
-      <span style="font-size: 0.8em; color: #6b7280; margin-left: 8px;">ℹ️</span>
-    </p>
+  <!-- Header con logo -->
+  <header class="top-header">
+    <img class="logo-header" src="{{ url_for('static', filename='images/logo-alleria.png') }}" alt="logo-alleria" />
+    <div></div> <!-- Espacio vacío para mantener el logo a la izquierda -->
+  </header>
+
+  <main style="padding-top: 12vh;">
+    <p class="msj-bienvenida" id="bienvenida">Bienvenid@ {% if nombre %}{{ nombre }}{% endif %}</p>
+    <p class="msj-actualmente" id="actualmente">Actualmente atendiendo al número: <strong id="atendiendo"></strong></p>
+    <p class="msj-tu-numero" id="tu-numero">Tu número en la fila es: <strong>{{ numero }}</strong></p>
     
-    <!-- Popover informativo -->
-    <div id="info-popover" class="popover-info hidden">
-      <div class="popover-content">
-        <p><strong>ℹ️ Información sobre el tiempo de espera:</strong></p>
-        <p>El tiempo de espera puede variar y este es solo una estimación. El tiempo se calcula en base al tiempo de espera de los últimos 6 comensales en la fila.</p>
-        <button onclick="toggleInfoPopover()" class="popover-close">Entendido</button>
+    <p class="msj-estado" id="estado">Esperando tu turno...</p>
+    
+    <!-- Cronómetro de 10 minutos (oculto inicialmente) -->
+    <div id="cronometro-container" class="cronometro-container hidden">
+      <div class="cronometro-content">
+        <h3 class="cronometro-title">⏰ Tiempo para llegar</h3>
+        <div class="cronometro-display" id="cronometro-display">10:00</div>
+        <p class="cronometro-message">¡Tienes 10 minutos para llegar a tu mesa!</p>
       </div>
     </div>
-  </div>
+    
+    <br>
+    <div class="tiempo-espera-promedio" id="tiempo-espera-container">
+      <p class="msj-tiempo-espera" id="tiempo-espera" onclick="toggleInfoPopover()" style="cursor: pointer;">
+        ⏱️ Tiempo de espera estimado: <strong id="tiempo-promedio">Calculando...</strong>
+        <span style="font-size: 0.8em; color: #6b7280; margin-left: 8px;">ℹ️</span>
+      </p>
+      
+      <!-- Popover informativo -->
+      <div id="info-popover" class="popover-info hidden">
+        <div class="popover-content">
+          <p><strong>ℹ️ Información sobre el tiempo de espera:</strong></p>
+          <p>El tiempo de espera puede variar y este es solo una estimación. El tiempo se calcula en base al tiempo de espera de los últimos 6 comensales en la fila.</p>
+          <button onclick="toggleInfoPopover()" class="popover-close">Entendido</button>
+        </div>
+      </div>
+    </div>
+  </main>
 
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <script>
     const id = {{ numero }};
     const socket = io();
+    let cronometroInterval = null;
 
     // Función para mostrar/ocultar el popover
     function toggleInfoPopover() {
@@ -46,6 +66,46 @@
         popover.classList.add("hidden");
       }
     });
+
+    // Función para iniciar cronómetro de 10 minutos
+    function iniciarCronometro() {
+      let tiempoRestante = 10 * 60; // 10 minutos en segundos
+      const cronometroDisplay = document.getElementById("cronometro-display");
+      const cronometroContainer = document.getElementById("cronometro-container");
+      
+      // Mostrar el cronómetro
+      cronometroContainer.classList.remove("hidden");
+      
+      function actualizarCronometro() {
+        const minutos = Math.floor(tiempoRestante / 60);
+        const segundos = tiempoRestante % 60;
+        
+        cronometroDisplay.textContent = `${minutos}:${segundos.toString().padStart(2, '0')}`;
+        
+        // Cambiar color según el tiempo restante
+        if (tiempoRestante <= 120) { // Últimos 2 minutos
+          cronometroDisplay.style.color = "#ef4444"; // Rojo
+          cronometroDisplay.style.animation = "pulse 1s infinite";
+        } else if (tiempoRestante <= 300) { // Últimos 5 minutos
+          cronometroDisplay.style.color = "#f59e0b"; // Amarillo
+        } else {
+          cronometroDisplay.style.color = "#22c55e"; // Verde
+        }
+        
+        if (tiempoRestante <= 0) {
+          clearInterval(cronometroInterval);
+          cronometroDisplay.textContent = "¡Tiempo agotado!";
+          cronometroDisplay.style.color = "#ef4444";
+          return;
+        }
+        
+        tiempoRestante--;
+      }
+      
+      // Actualizar inmediatamente y luego cada segundo
+      actualizarCronometro();
+      cronometroInterval = setInterval(actualizarCronometro, 1000);
+    }
 
     // Función para obtener y actualizar el tiempo de espera promedio
     function actualizarTiempoEsperaPromedio() {
@@ -89,6 +149,9 @@
       document.getElementById("tu-numero").style.display = "none";
       document.getElementById("bienvenida").style.display = "none";
       document.getElementById("tiempo-espera-container").style.display = "none";
+      
+      // Iniciar cronómetro de 10 minutos
+      iniciarCronometro();
     });
     
     socket.on("actualizar_posicion",(data)=>{
