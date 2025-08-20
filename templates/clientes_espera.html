@@ -42,10 +42,18 @@
               <span class="waiting-time" data-joined="{{ c.joined_at.isoformat() }}">Calculando...</span>
             </td>
             <td class="text-xs sm:text-sm">
-              <button onclick="iniciarAsignacionManual({{ c.id }}, '{{ c.nombre }}', {{ c.cantidad_comensales }})" 
-                      class="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs">
-                🏠 Asignar
-              </button>
+              {% if loop.index == 1 %}
+                <!-- Solo el primer cliente puede ser asignado -->
+                <button onclick="iniciarAsignacionManual({{ c.id }}, '{{ c.nombre }}', {{ c.cantidad_comensales }})" 
+                        class="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs">
+                  🏠 Asignar
+                </button>
+              {% else %}
+                <!-- Otros clientes muestran su posición en la fila -->
+                <span class="bg-gray-300 text-gray-600 px-2 py-1 rounded text-xs">
+                  #{{ loop.index }} en fila
+                </span>
+              {% endif %}
             </td>
           </tr>
           {% endfor %}
@@ -263,8 +271,19 @@
               `;
               tbody.appendChild(tr);
             } else {
-              data.forEach(c => {
+              data.forEach((c, index) => {
                 const joinedDate = new Date(c.joined_at);
+                
+                // Determinar si es el primer cliente en la fila
+                const isFirstInLine = index === 0;
+                const actionCell = isFirstInLine 
+                  ? `<button onclick="iniciarAsignacionManual(${c.id}, '${c.nombre}', ${c.cantidad_comensales})" 
+                            class="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs">
+                      🏠 Asignar
+                    </button>`
+                  : `<span class="bg-gray-300 text-gray-600 px-2 py-1 rounded text-xs">
+                      #${index + 1} en fila
+                    </span>`;
                 
                 const tr = document.createElement('tr');
                 tr.className = 'border-b border-gray-200 hover:bg-gray-50';
@@ -277,10 +296,7 @@
                     <span class="waiting-time" data-joined="${c.joined_at}">Calculando...</span>
                   </td>
                   <td class="text-xs sm:text-sm">
-                    <button onclick="iniciarAsignacionManual(${c.id}, '${c.nombre}', ${c.cantidad_comensales})" 
-                            class="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs">
-                      🏠 Asignar
-                    </button>
+                    ${actionCell}
                   </td>
                 `;
                 tbody.appendChild(tr);
