@@ -170,6 +170,17 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)  # Expiración de 
 db.init_app(app)
 migrate = Migrate(app, db)
 
+def run_migrations():
+    """Ejecutar migraciones automáticamente en producción"""
+    try:
+        if os.environ.get('DATABASE_URL'):  # Solo en producción (Render)
+            from flask_migrate import upgrade
+            with app.app_context():
+                upgrade()
+                print("✅ Migraciones aplicadas exitosamente")
+    except Exception as e:
+        print(f"⚠️ Error aplicando migraciones: {e}")
+
 # Registrar función para usar en templates
 app.jinja_env.globals['datetime_to_js_timestamp'] = datetime_to_js_timestamp
 
@@ -908,6 +919,9 @@ def tiempo_espera_promedio():
     })
 
 if __name__ == "__main__":
+    # Ejecutar migraciones automáticamente en producción
+    run_migrations()
+    
     # Inicializar datos de la aplicación
     init_app_data()
     # Configuración para desarrollo vs producción
