@@ -3,6 +3,96 @@
 <head><title>Cliente</title>
   <link rel="stylesheet" href="/static/styles/output.css">
   <link href="https://fonts.googleapis.com/css2?family=Industry+Inc:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>
+    @keyframes pulse {
+      0%, 100% { 
+        transform: scale(1); 
+        opacity: 1; 
+      }
+      50% { 
+        transform: scale(1.05); 
+        opacity: 0.8; 
+      }
+    }
+    
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0.3; }
+    }
+    
+    @keyframes slideDown {
+      from { transform: translateX(-50%) translateY(-100%); }
+      to { transform: translateX(-50%) translateY(0); }
+    }
+    
+    .pulse-animation {
+      animation: pulse 1s infinite;
+    }
+    
+    .blink-animation {
+      animation: blink 0.5s infinite;
+    }
+    
+    /* Asegurar que el cronómetro sea visible */
+    #cronometro-container {
+      min-height: 60px !important;
+      padding: 15px !important;
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(59, 130, 246, 0.1)) !important;
+      border: 2px solid rgba(34, 197, 94, 0.3) !important;
+      border-radius: 12px !important;
+      margin: 15px 0 !important;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+    }
+    
+    #cronometro-display {
+      font-family: 'Courier New', monospace !important;
+      font-size: 2rem !important;
+      font-weight: bold !important;
+      text-align: center !important;
+      display: block !important;
+      visibility: visible !important;
+      color: #22c55e !important;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.1) !important;
+    }
+    
+    .cronometro-content {
+      text-align: center !important;
+    }
+    
+    .cronometro-title {
+      font-size: 1.2rem !important;
+      margin-bottom: 10px !important;
+      color: #374151 !important;
+    }
+    
+    .cronometro-message {
+      font-size: 0.9rem !important;
+      color: #6b7280 !important;
+      margin-top: 10px !important;
+    }
+    
+    /* Estilos para alerta de notificación */
+    .notification-prompt {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #3b82f6;
+      color: white;
+      padding: 1rem 2rem;
+      border-radius: 0.5rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      z-index: 1000;
+      animation: slideDown 0.3s ease-out;
+    }
+    
+    /* Forzar visibilidad del cronómetro */
+    .cronometro-container:not(.hidden) {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+  </style>
 </head>
 <body>
   <!-- Header con logo -->
@@ -116,26 +206,208 @@
 
     // Mostrar notificación cuando sea el turno
     function mostrarNotificacionTurno(mesa) {
+      console.log('🔔 === INICIO NOTIFICACIÓN TURNO ===');
+      console.log('📱 Mesa asignada:', mesa);
+      console.log('🔔 Permission:', Notification.permission);
+      console.log('👁️ Visibility:', document.visibilityState);
+      console.log('🌐 Online:', navigator.onLine);
+      
+      // Método 1: Notificación web estándar
       if (Notification.permission === 'granted') {
-        const notificacion = new Notification('🎉 ¡Es tu turno!', {
-          body: `Tu mesa ${mesa} está lista. Tienes 10 minutos para llegar.`,
-          icon: '/static/images/logo-alleria.png',
-          badge: '/static/images/logo-alleria.png',
-          vibrate: [200, 100, 200, 100, 200],
-          requireInteraction: true // Mantiene la notificación hasta que el usuario interactúe
-        });
+        try {
+          const notificacion = new Notification('🎉 ¡Es tu turno!', {
+            body: `Tu mesa ${mesa} está lista. Tienes 10 minutos para llegar.`,
+            icon: '/static/images/logo-alleria.png',
+            badge: '/static/images/logo-alleria.png',
+            vibrate: [500, 200, 500, 200, 500, 200, 500], // Vibración más intensa y larga
+            requireInteraction: true, // Mantiene la notificación hasta que el usuario interactúe
+            tag: 'turno-mesa', // Evita notificaciones duplicadas
+            renotify: true,
+            silent: false, // Asegurar que no sea silenciosa
+            data: { mesa: mesa, timestamp: Date.now() }
+          });
 
-        // Cerrar automáticamente después de 10 segundos si no se ha cerrado
-        setTimeout(() => {
-          notificacion.close();
-        }, 10000);
+          // Cerrar automáticamente después de 60 segundos
+          setTimeout(() => {
+            notificacion.close();
+          }, 60000);
 
-        // Manejar clic en la notificación
-        notificacion.onclick = function() {
-          window.focus();
-          notificacion.close();
-        };
+          // Manejar clic en la notificación
+          notificacion.onclick = function() {
+            window.focus();
+            notificacion.close();
+          };
+          
+          console.log('✅ Notificación web creada exitosamente');
+        } catch (error) {
+          console.error('❌ Error creando notificación web:', error);
+        }
+      } else {
+        console.log('❌ Permisos de notificación no concedidos');
       }
+      
+      // Método 2: Service Worker (para notificaciones en segundo plano)
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        try {
+          navigator.serviceWorker.controller.postMessage({
+            type: 'SHOW_NOTIFICATION',
+            title: '🎉 ¡Es tu turno!',
+            body: `Tu mesa ${mesa} está lista. Tienes 10 minutos para llegar.`,
+            mesa: mesa
+          });
+          console.log('✅ Mensaje enviado al Service Worker');
+        } catch (error) {
+          console.error('❌ Error enviando mensaje al SW:', error);
+        }
+      }
+      
+      // Método 3: Alerta visual en la página (siempre funciona)
+      mostrarAlertaVisual(mesa);
+      
+      // Método 4: Intentar despertar la página con vibración y sonido
+      intentarDespertarDispositivo();
+      
+      // Método 5: Crear alerta visual superpuesta
+      crearAlertaSuperpuesta(mesa);
+      
+      console.log('🔔 === FIN NOTIFICACIÓN TURNO ===');
+    }
+    
+    // Nueva función: Alerta visual que siempre funciona
+    function mostrarAlertaVisual(mesa) {
+      // Cambiar el título de la página (se ve en la pestaña)
+      document.title = `🎉 ¡Es tu turno! Mesa ${mesa}`;
+      
+      // Cambiar favicon para que parpadee
+      let faviconLink = document.querySelector('link[rel="icon"]');
+      if (!faviconLink) {
+        faviconLink = document.createElement('link');
+        faviconLink.rel = 'icon';
+        document.head.appendChild(faviconLink);
+      }
+      
+      // Alternar favicon cada 500ms durante 10 segundos
+      let faviconToggle = 0;
+      const faviconInterval = setInterval(() => {
+        faviconLink.href = faviconToggle % 2 === 0 ? 
+          '/static/images/logo-alleria.png' : 
+          'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🎉</text></svg>';
+        faviconToggle++;
+      }, 500);
+      
+      // Parar el parpadeo después de 10 segundos
+      setTimeout(() => {
+        clearInterval(faviconInterval);
+        faviconLink.href = '/static/images/logo-alleria.png';
+        document.title = 'Cliente - Restaurante Alleria';
+      }, 10000);
+      
+      console.log('✅ Alerta visual activada');
+    }
+    
+    // Nueva función: Intentar despertar dispositivo
+    function intentarDespertarDispositivo() {
+      // Vibración si está disponible
+      if (navigator.vibrate) {
+        navigator.vibrate([500, 200, 500, 200, 500]);
+        console.log('📳 Vibración activada');
+      }
+      
+      // Reproducir sonido de notificación
+      try {
+        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmUUBj2Z2u/JSSUK');
+        audio.play().catch(e => console.log('❌ No se pudo reproducir sonido:', e));
+        console.log('🔊 Intentando reproducir sonido');
+      } catch (e) {
+        console.log('❌ Error con audio:', e);
+      }
+      
+      // Intentar forzar enfoque en la ventana
+      if (window.focus) {
+        window.focus();
+      }
+      
+      // Intentar Wake Lock si está disponible
+      if ('wakeLock' in navigator) {
+        navigator.wakeLock.request('screen')
+          .then(() => console.log('🔋 Wake Lock activado temporalmente'))
+          .catch(e => console.log('❌ Wake Lock no disponible:', e));
+      }
+    }
+    
+    // Nueva función: Crear alerta visual superpuesta
+    function crearAlertaSuperpuesta(mesa) {
+      // Remover alerta anterior si existe
+      const alertaAnterior = document.getElementById('alerta-turno');
+      if (alertaAnterior) {
+        alertaAnterior.remove();
+      }
+      
+      // Crear overlay de alerta
+      const overlay = document.createElement('div');
+      overlay.id = 'alerta-turno';
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: pulse 1s infinite;
+      `;
+      
+      // Crear contenido de la alerta
+      overlay.innerHTML = `
+        <div style="
+          background: white;
+          padding: 2rem;
+          border-radius: 1rem;
+          text-align: center;
+          max-width: 90%;
+          box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+          border: 3px solid #22c55e;
+        ">
+          <div style="font-size: 4rem; margin-bottom: 1rem;">🎉</div>
+          <h2 style="font-size: 2rem; color: #22c55e; margin-bottom: 1rem; font-weight: bold;">
+            ¡ES TU TURNO!
+          </h2>
+          <p style="font-size: 1.2rem; margin-bottom: 1rem; color: #333;">
+            Tu mesa <strong>${mesa}</strong> está lista
+          </p>
+          <p style="color: #666; margin-bottom: 2rem;">
+            Tienes 10 minutos para llegar
+          </p>
+          <button onclick="document.getElementById('alerta-turno').remove()" 
+                  style="
+                    background: #22c55e;
+                    color: white;
+                    padding: 1rem 2rem;
+                    border: none;
+                    border-radius: 0.5rem;
+                    font-size: 1.1rem;
+                    cursor: pointer;
+                    font-weight: bold;
+                  ">
+            ¡Entendido!
+          </button>
+        </div>
+      `;
+      
+      // Agregar al documento
+      document.body.appendChild(overlay);
+      
+      // Auto-remover después de 30 segundos
+      setTimeout(() => {
+        if (document.getElementById('alerta-turno')) {
+          document.getElementById('alerta-turno').remove();
+        }
+      }, 30000);
+      
+      console.log('✅ Alerta superpuesta creada');
     }
 
     // Inicializar notificaciones al cargar la página
@@ -150,6 +422,34 @@
           }
         }, 2000);
       }
+      
+      // Intentar mantener la pantalla activa (Wake Lock API)
+      if ('wakeLock' in navigator) {
+        try {
+          const wakeLock = await navigator.wakeLock.request('screen');
+          console.log('🔋 Wake Lock activado - pantalla se mantendrá activa');
+          
+          // Manejar cuando el usuario cambia de pestaña
+          document.addEventListener('visibilitychange', async () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') {
+              const newWakeLock = await navigator.wakeLock.request('screen');
+              console.log('🔋 Wake Lock reactivado');
+            }
+          });
+        } catch (err) {
+          console.log('❌ No se pudo activar Wake Lock:', err);
+        }
+      }
+      
+      // Registrar eventos para mantener conexión activa
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          console.log('👁️ Página visible - reconectando socket');
+          if (socket.disconnected) {
+            socket.connect();
+          }
+        }
+      });
     });
 
     // ==================== FIN SISTEMA DE NOTIFICACIONES ====================
@@ -172,42 +472,120 @@
 
     // Función para iniciar cronómetro de 10 minutos
     function iniciarCronometro() {
+      console.log('🕐 === INICIANDO CRONÓMETRO ===');
+      console.log('🌐 URL actual:', window.location.href);
+      console.log('📱 User Agent:', navigator.userAgent.substring(0, 100));
+      console.log('👁️ Visibilidad página:', document.visibilityState);
+      
       let tiempoRestante = 10 * 60; // 10 minutos en segundos
       const cronometroDisplay = document.getElementById("cronometro-display");
       const cronometroContainer = document.getElementById("cronometro-container");
       
-      // Mostrar el cronómetro
+      // Verificar que los elementos existen con más detalle
+      console.log('🔍 Verificando elementos del DOM:');
+      console.log('  - cronometro-display:', !!cronometroDisplay, cronometroDisplay);
+      console.log('  - cronometro-container:', !!cronometroContainer, cronometroContainer);
+      console.log('  - body:', !!document.body);
+      console.log('  - head:', !!document.head);
+      
+      if (!cronometroDisplay || !cronometroContainer) {
+        console.error('❌ Elementos del cronómetro no encontrados');
+        console.log('📋 Todos los elementos con ID:');
+        Array.from(document.querySelectorAll('[id]')).forEach(el => {
+          console.log(`  - ${el.id}: ${el.tagName}`);
+        });
+        return;
+      }
+      
+      // Mostrar el cronómetro con logging detallado
+      console.log('🔧 Estado antes de mostrar:', {
+        containerDisplay: cronometroContainer.style.display,
+        containerClasses: cronometroContainer.className,
+        displayText: cronometroDisplay.textContent
+      });
+      
       cronometroContainer.classList.remove("hidden");
+      cronometroContainer.style.display = "block";
+      cronometroContainer.style.visibility = "visible";
+      
+      console.log('🔧 Estado después de mostrar:', {
+        containerDisplay: cronometroContainer.style.display,
+        containerClasses: cronometroContainer.className,
+        isVisible: cronometroContainer.offsetHeight > 0
+      });
       
       function actualizarCronometro() {
+        // Verificar que el elemento aún existe
+        const displayActual = document.getElementById("cronometro-display");
+        if (!displayActual) {
+          console.error('❌ Elemento cronometro-display desapareció');
+          clearInterval(cronometroInterval);
+          return;
+        }
+        
         const minutos = Math.floor(tiempoRestante / 60);
         const segundos = tiempoRestante % 60;
         
-        cronometroDisplay.textContent = `${minutos}:${segundos.toString().padStart(2, '0')}`;
+        const tiempoTexto = `${minutos}:${segundos.toString().padStart(2, '0')}`;
+        displayActual.textContent = tiempoTexto;
+        
+        // Forzar actualización visual
+        displayActual.style.display = "block";
+        displayActual.style.visibility = "visible";
+        
+        // Log detallado cada 30 segundos
+        if (tiempoRestante % 30 === 0) {
+          console.log(`⏰ Cronómetro actualizado: ${tiempoTexto}`);
+          console.log('📊 Estado del elemento:', {
+            texto: displayActual.textContent,
+            visible: displayActual.offsetHeight > 0,
+            estilos: {
+              display: displayActual.style.display,
+              visibility: displayActual.style.visibility,
+              color: displayActual.style.color
+            }
+          });
+        }
         
         // Cambiar color según el tiempo restante
         if (tiempoRestante <= 120) { // Últimos 2 minutos
-          cronometroDisplay.style.color = "#ef4444"; // Rojo
-          cronometroDisplay.style.animation = "pulse 1s infinite";
+          displayActual.style.color = "#ef4444"; // Rojo
+          displayActual.style.animation = "pulse 1s infinite";
+          displayActual.style.fontWeight = "bold";
         } else if (tiempoRestante <= 300) { // Últimos 5 minutos
-          cronometroDisplay.style.color = "#f59e0b"; // Amarillo
+          displayActual.style.color = "#f59e0b"; // Amarillo
         } else {
-          cronometroDisplay.style.color = "#22c55e"; // Verde
+          displayActual.style.color = "#22c55e"; // Verde
         }
+        
+        // Actualizar título de la página
+        document.title = `⏰ ${tiempoTexto} - Restaurante Alleria`;
         
         if (tiempoRestante <= 0) {
           clearInterval(cronometroInterval);
-          cronometroDisplay.textContent = "¡Tiempo agotado!";
-          cronometroDisplay.style.color = "#ef4444";
+          displayActual.textContent = "¡Tiempo agotado!";
+          displayActual.style.color = "#ef4444";
+          document.title = "⏰ ¡Tiempo agotado! - Restaurante Alleria";
+          console.log('⏰ Cronómetro terminado');
           return;
         }
         
         tiempoRestante--;
       }
       
-      // Actualizar inmediatamente y luego cada segundo
+      // Limpiar intervalo anterior
+      if (window.cronometroInterval) {
+        clearInterval(window.cronometroInterval);
+        console.log('🔄 Intervalo anterior limpiado');
+      }
+      
+      // Actualizar inmediatamente
       actualizarCronometro();
-      cronometroInterval = setInterval(actualizarCronometro, 1000);
+      
+      // Crear nuevo intervalo y guardarlo globalmente
+      window.cronometroInterval = setInterval(actualizarCronometro, 1000);
+      console.log('✅ Cronómetro iniciado con ID:', window.cronometroInterval);
+      console.log('🕐 === CRONÓMETRO CONFIGURADO ===');
     }
 
     // Función para obtener y actualizar el tiempo de espera promedio
@@ -245,19 +623,61 @@
     setInterval(actualizarTiempoEsperaPromedio, 30000);
 
     socket.on("es_tu_turno", (data) => {
-      document.getElementById("estado").className = "font-bold text-6xl";
-      document.getElementById("estado").innerText = "¡Es tu turno! Ve a la mesa " + data.mesa;
-      document.getElementById("actualmente").style.display = "none";
-      document.getElementById("atendiendo").style.display = "none";
-      document.getElementById("tu-numero").style.display = "none";
-      document.getElementById("bienvenida").style.display = "none";
-      document.getElementById("tiempo-espera-container").style.display = "none";
+      console.log('🎉 === EVENTO ES_TU_TURNO RECIBIDO ===');
+      console.log('📦 Data recibida:', data);
+      console.log('🌐 Ubicación:', window.location.href);
+      console.log('📱 Plataforma:', navigator.platform);
+      console.log('👁️ Documento visible:', document.visibilityState);
+      console.log('🔌 Socket conectado:', socket.connected);
       
-      // Mostrar notificación push
-      mostrarNotificacionTurno(data.mesa);
+      try {
+        // Actualizar elementos de la interfaz
+        const estadoElement = document.getElementById("estado");
+        const actualmenteElement = document.getElementById("actualmente");
+        const atendiendoElement = document.getElementById("atendiendo");
+        const tuNumeroElement = document.getElementById("tu-numero");
+        const bienvenidaElement = document.getElementById("bienvenida");
+        const tiempoEsperaElement = document.getElementById("tiempo-espera-container");
+        
+        console.log('🔍 Elementos encontrados:', {
+          estado: !!estadoElement,
+          actualmente: !!actualmenteElement,
+          atendiendo: !!atendiendoElement,
+          tuNumero: !!tuNumeroElement,
+          bienvenida: !!bienvenidaElement,
+          tiempoEspera: !!tiempoEsperaElement
+        });
+        
+        if (estadoElement) {
+          estadoElement.className = "font-bold text-6xl text-green-600";
+          estadoElement.innerText = "¡Es tu turno! Ve a la mesa " + data.mesa;
+          console.log('✅ Estado actualizado');
+        }
+        
+        // Ocultar elementos no necesarios
+        [actualmenteElement, atendiendoElement, tuNumeroElement, bienvenidaElement, tiempoEsperaElement].forEach((el, index) => {
+          if (el) {
+            el.style.display = "none";
+            console.log(`✅ Elemento ${index + 1} ocultado`);
+          }
+        });
+        
+        // Mostrar notificación push con debugging
+        console.log('🔔 Iniciando proceso de notificación...');
+        mostrarNotificacionTurno(data.mesa);
+        
+        // Iniciar cronómetro con debugging
+        console.log('⏰ Iniciando proceso de cronómetro...');
+        iniciarCronometro();
+        
+        console.log('✅ Proceso de turno completado exitosamente');
+        
+      } catch (error) {
+        console.error('❌ Error procesando evento es_tu_turno:', error);
+        console.error('📋 Stack trace:', error.stack);
+      }
       
-      // Iniciar cronómetro de 10 minutos
-      iniciarCronometro();
+      console.log('🎉 === FIN EVENTO ES_TU_TURNO ===');
     });
     
     socket.on("actualizar_posicion",(data)=>{
