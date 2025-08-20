@@ -123,7 +123,19 @@ def datetime_to_js_timestamp(dt):
     return int(chile_time.timestamp() * 1000)
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite3'
+
+# Configuración de base de datos
+if os.environ.get('DATABASE_URL'):
+    # Usar PostgreSQL en producción (Render)
+    database_url = os.environ.get('DATABASE_URL')
+    # Render proporciona postgres:// pero SQLAlchemy requiere postgresql://
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+else:
+    # Usar SQLite en desarrollo local
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite3'
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Configuración de seguridad mejorada
