@@ -351,8 +351,9 @@
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <script>
     const id = {{ numero }};
-    const socket = io();
-    let cronometroInterval = null;
+  const socket = io();
+  let cronometroInterval = null;
+  let cronometroAsignacion = null; // Date del momento de asignación para cálculo absoluto
 
     // ==================== SISTEMA DE NOTIFICACIONES PUSH ====================
     
@@ -753,114 +754,56 @@
       }
     });
 
-    // Función para iniciar cronómetro de 10 minutos
-    function iniciarCronometro(asignada_at = null) {
-      console.log('🕐 === INICIANDO CRONÓMETRO ===');
-      console.log('📅 Asignada en:', asignada_at);
-      console.log('🌐 URL actual:', window.location.href);
-      console.log('📱 User Agent:', navigator.userAgent.substring(0, 100));
-      console.log('👁️ Visibilidad página:', document.visibilityState);
-
-      // NUEVO: No iniciar ni mostrar el cronómetro si no hay timestamp válido (mesa aún no asignada)
+    // Cronómetro robusto (cálculo absoluto) similar a lógica de workers
+    function iniciarCronometro(asignada_at = null){
+      console.log('🕐 [CRONOMETRO] init con asignada_at=', asignada_at);
       if(!asignada_at){
-        console.warn('⛔ Cronómetro no iniciado: no hay mesa asignada todavía');
-        return; // Salimos sin tocar el DOM del cronómetro
-      }
-      
-      const cronometroDisplay = document.getElementById("cronometro-display");
-      const cronometroContainer = document.getElementById("cronometro-container");
-      
-      // Verificar que los elementos existen con más detalle
-      console.log('🔍 Verificando elementos del DOM:');
-      console.log('  - cronometro-display:', !!cronometroDisplay, cronometroDisplay);
-      console.log('  - cronometro-container:', !!cronometroContainer, cronometroContainer);
-      
-      if (!cronometroDisplay || !cronometroContainer) {
-        console.error('❌ Elementos del cronómetro no encontrados');
+        console.warn('⛔ [CRONOMETRO] sin timestamp, no se inicia');
         return;
       }
-      
-      // Calcular tiempo restante basado en cuándo se asignó la mesa
-  let tiempoRestante; /* variable declarada arriba para uso posterior */
-      const asignacion = new Date(asignada_at);
-      const ahora = new Date();
-      const tiempoTranscurrido = Math.floor((ahora - asignacion) / 1000); // en segundos
-  tiempoRestante = Math.max(0, (10 * 60) - tiempoTranscurrido); // 10 minutos menos tiempo transcurrido
-      console.log('⏰ Cálculo de tiempo:', {
-        asignacion: asignacion.toISOString(),
-        ahora: ahora.toISOString(),
-        tiempoTranscurrido: tiempoTranscurrido,
-        tiempoRestante: tiempoRestante
-      });
-      
-      // Mostrar el cronómetro con logging detallado
-      cronometroContainer.classList.remove("hidden");
-      cronometroContainer.style.display = "block";
-      cronometroContainer.style.visibility = "visible";
-      
-      function actualizarCronometro() {
-        // Verificar que el elemento aún existe
-        const displayActual = document.getElementById("cronometro-display");
-        if (!displayActual) {
-          console.error('❌ Elemento cronometro-display desapareció');
-          clearInterval(cronometroInterval);
-          return;
-        }
-        
-        const minutos = Math.floor(tiempoRestante / 60);
-        const segundos = tiempoRestante % 60;
-        
-        const tiempoTexto = `${minutos}:${segundos.toString().padStart(2, '0')}`;
-        displayActual.textContent = tiempoTexto;
-        
-        // Forzar actualización visual
-        displayActual.style.display = "block";
-        displayActual.style.visibility = "visible";
-        
-        // Log detallado cada 30 segundos
-        if (tiempoRestante % 30 === 0) {
-          console.log(`⏰ Cronómetro actualizado: ${tiempoTexto}`);
-        }
-        
-        // Cambiar color según el tiempo restante
-        if (tiempoRestante <= 120) { // Últimos 2 minutos
-          displayActual.style.color = "#ef4444"; // Rojo
-          displayActual.style.animation = "pulse 1s infinite";
-          displayActual.style.fontWeight = "bold";
-        } else if (tiempoRestante <= 300) { // Últimos 5 minutos
-          displayActual.style.color = "#f59e0b"; // Amarillo
+      const ts = new Date(asignada_at);
+      if(isNaN(ts.getTime())){ console.error('❌ [CRONOMETRO] timestamp inválido'); return; }
+      cronometroAsignacion = ts; // guardar referencia absoluta
+      const cont = document.getElementById('cronometro-container');
+      const disp = document.getElementById('cronometro-display');
+      if(!cont || !disp){ console.error('❌ [CRONOMETRO] elementos no encontrados'); return; }
+      cont.classList.remove('hidden');
+      cont.style.display='block';
+      cont.style.visibility='visible';
+      // limpiar intervalo anterior
+      if(window.cronometroInterval){ clearInterval(window.cronometroInterval); }
+      const TOTAL = 600; // 10 min
+      function tick(){
+        if(!cronometroAsignacion){ clearInterval(window.cronometroInterval); return; }
+        const ahora = new Date();
+        const trans = Math.floor((ahora - cronometroAsignacion)/1000);
+        const restante = Math.max(0, TOTAL - trans);
+        const m = Math.floor(restante/60);
+        const s = restante % 60;
+        disp.textContent = `${m}:${s.toString().padStart(2,'0')}`;
+        if(restante <= 120){
+          disp.style.color = '#ef4444';
+          disp.style.animation = 'pulse 1s infinite';
+          disp.style.fontWeight = 'bold';
+        } else if(restante <= 300){
+          disp.style.color = '#f59e0b';
+          disp.style.animation = '';
         } else {
-          displayActual.style.color = "#22c55e"; // Verde
+          disp.style.color = '#22c55e';
+          disp.style.animation = '';
         }
-        
-        // Actualizar título de la página
-        document.title = `⏰ ${tiempoTexto} - Restaurante Alleria`;
-        
-        if (tiempoRestante <= 0) {
-          clearInterval(cronometroInterval);
-          displayActual.textContent = "¡Tiempo agotado!";
-          displayActual.style.color = "#ef4444";
-          document.title = "⏰ ¡Tiempo agotado! - Restaurante Alleria";
-          console.log('⏰ Cronómetro terminado');
-          return;
+        if(restante % 5 === 0 || restante <= 10){
+          document.title = `⏰ ${m}:${s.toString().padStart(2,'0')} - Restaurante Alleria`;
         }
-        
-        tiempoRestante--;
+        if(restante === 0){
+          disp.textContent = '¡Tiempo agotado!';
+          document.title = '⏰ ¡Tiempo agotado! - Restaurante Alleria';
+          clearInterval(window.cronometroInterval);
+        }
       }
-      
-      // Limpiar intervalo anterior
-      if (window.cronometroInterval) {
-        clearInterval(window.cronometroInterval);
-        console.log('🔄 Intervalo anterior limpiado');
-      }
-      
-      // Actualizar inmediatamente
-      actualizarCronometro();
-      
-      // Crear nuevo intervalo y guardarlo globalmente
-      window.cronometroInterval = setInterval(actualizarCronometro, 1000);
-      console.log('✅ Cronómetro iniciado con ID:', window.cronometroInterval);
-      console.log('🕐 === CRONÓMETRO CONFIGURADO ===');
+      tick();
+      window.cronometroInterval = setInterval(tick,1000);
+      console.log('✅ [CRONOMETRO] iniciado');
     }
 
     // Función para obtener y actualizar el tiempo de espera promedio
