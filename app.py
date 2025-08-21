@@ -351,6 +351,7 @@ def liberar_mesa(mesa_id):
                     # El primer cliente SÍ cabe en la mesa - asignar automáticamente
                     siguiente.assigned_table = mesa_liberada.id
                     siguiente.atendido_at = get_chile_time()
+                    siguiente.mesa_asignada_at = get_chile_time()  # Timestamp para cronómetro
                     mesa_liberada.is_occupied = True
                     mesa_liberada.start_time = get_chile_time()
                     mesa_liberada.cliente_id = siguiente.id
@@ -376,7 +377,10 @@ def liberar_mesa(mesa_id):
         # Notificar clientes asignados después del commit exitoso
         for mesa_id_asignada, cliente_asignado in mesas_asignadas:
             if cliente_asignado.sid:
-                socketio.emit("es_tu_turno", {"mesa": mesa_id_asignada}, to=cliente_asignado.sid)
+                socketio.emit("es_tu_turno", {
+                    "mesa": mesa_id_asignada,
+                    "asignada_at": cliente_asignado.mesa_asignada_at.isoformat() if cliente_asignado.mesa_asignada_at else None
+                }, to=cliente_asignado.sid)
         
         # Emitir actualizaciones
         socketio.emit('actualizar_mesas')
@@ -438,6 +442,7 @@ def asignar_cliente_a_mesas():
         # Quitar al cliente de la cola y registrar cuándo fue atendido
         cliente.assigned_table = mesa_principal.id
         cliente.atendido_at = get_chile_time()
+        cliente.mesa_asignada_at = get_chile_time()  # Timestamp para cronómetro
         
         # Marcar las mesas adicionales como ocupadas (parte del mismo grupo)
         for mesa in mesas[1:]:
@@ -458,7 +463,8 @@ def asignar_cliente_a_mesas():
             mesas_asignadas = [m.id for m in mesas]
             socketio.emit("es_tu_turno", {
                 "mesa": mesa_principal.id,
-                "mesas_adicionales": mesas_asignadas[1:] if len(mesas_asignadas) > 1 else []
+                "mesas_adicionales": mesas_asignadas[1:] if len(mesas_asignadas) > 1 else [],
+                "asignada_at": cliente.mesa_asignada_at.isoformat() if cliente.mesa_asignada_at else None
             }, to=cliente.sid)
         
         socketio.emit('actualizar_mesas')
@@ -537,6 +543,7 @@ def asignar_cliente_multiple(cliente_id):
         # Quitar al cliente de la cola y registrar cuándo fue atendido
         cliente.assigned_table = mesa_principal.id
         cliente.atendido_at = get_chile_time()
+        cliente.mesa_asignada_at = get_chile_time()  # Timestamp para cronómetro
         
         # Marcar las mesas adicionales como ocupadas (parte del mismo grupo)
         for mesa in mesas_reservadas[1:]:
@@ -557,7 +564,8 @@ def asignar_cliente_multiple(cliente_id):
             mesas_asignadas = [m.id for m in mesas_reservadas]
             socketio.emit("es_tu_turno", {
                 "mesa": mesa_principal.id,
-                "mesas_adicionales": mesas_asignadas[1:] if len(mesas_asignadas) > 1 else []
+                "mesas_adicionales": mesas_asignadas[1:] if len(mesas_asignadas) > 1 else [],
+                "asignada_at": cliente.mesa_asignada_at.isoformat() if cliente.mesa_asignada_at else None
             }, to=cliente.sid)
         
         socketio.emit('actualizar_mesas')
@@ -619,6 +627,7 @@ def cancelar_reserva(mesa_id):
             # El primer cliente SÍ cabe en esta mesa - asignar automáticamente
             siguiente.assigned_table = mesa.id
             siguiente.atendido_at = get_chile_time()
+            siguiente.mesa_asignada_at = get_chile_time()  # Timestamp para cronómetro
             mesa.is_occupied = True
             mesa.start_time = get_chile_time()
             mesa.cliente_id = siguiente.id
@@ -643,7 +652,10 @@ def cancelar_reserva(mesa_id):
         
         # Notificar al cliente después del commit exitoso
         if siguiente and siguiente.sid:
-            socketio.emit("es_tu_turno", {"mesa": mesa.id}, to=siguiente.sid)
+            socketio.emit("es_tu_turno", {
+                "mesa": mesa.id,
+                "asignada_at": siguiente.mesa_asignada_at.isoformat() if siguiente.mesa_asignada_at else None
+            }, to=siguiente.sid)
         
         socketio.emit('actualizar_mesas')
         socketio.emit('actualizar_lista_clientes')
@@ -702,23 +714,12 @@ def registrar_cliente(data):
 
 @socketio.on("heartbeat")
 def manejar_heartbeat(data):
-    """Manejar heartbeat del cliente para mantener conexión activa y verificar estado"""
+    """Manejar heartbeat del cliente para mantener conexión activa"""
     try:
         cliente_id = data.get('cliente_id')
-        page_visible = data.get('page_visible', True)
         
-        if not cliente_id:
-            return False
-            
-        print(f"💓 Heartbeat de cliente {cliente_id}, página visible: {page_visible}")
-        
-        # Solo verificar estado si la página está visible (para evitar spam)
-        if page_visible:
-            cliente = db.session.get(Cliente, cliente_id)
-            if cliente and cliente.assigned_table:
-                print(f"🎯 Cliente {cliente_id} ya tiene mesa {cliente.assigned_table} asignada")
-                # Emitir evento de turno por si no lo recibió antes
-                socketio.emit("es_tu_turno", {"mesa": cliente.assigned_table}, room=cliente.sid)
+        if cliente_id:
+            print(f"💓 Heartbeat de cliente {cliente_id}")
                 
         return True
         
@@ -958,6 +959,7 @@ def verificar_estado_cliente(cliente_id):
             'nombre': cliente.nombre,
             'mesa_asignada': cliente.assigned_table,
             'joined_at': cliente.joined_at.isoformat() if cliente.joined_at else None,
+            'mesa_asignada_at': cliente.mesa_asignada_at.isoformat() if cliente.mesa_asignada_at else None,
             'tiene_mesa': cliente.assigned_table is not None
         }
         

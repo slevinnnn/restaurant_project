@@ -486,7 +486,7 @@
                     notificationShown = true;
                     
                     mostrarNotificacionTurno(data.mesa_asignada);
-                    iniciarCronometro();
+                    iniciarCronometro(data.mesa_asignada_at);
                     
                     // Actualizar interfaz
                     document.getElementById("estado").className = "font-bold text-6xl text-green-600";
@@ -548,13 +548,13 @@
     });
 
     // Función para iniciar cronómetro de 10 minutos
-    function iniciarCronometro() {
+    function iniciarCronometro(asignada_at = null) {
       console.log('🕐 === INICIANDO CRONÓMETRO ===');
+      console.log('📅 Asignada en:', asignada_at);
       console.log('🌐 URL actual:', window.location.href);
       console.log('📱 User Agent:', navigator.userAgent.substring(0, 100));
       console.log('👁️ Visibilidad página:', document.visibilityState);
       
-      let tiempoRestante = 10 * 60; // 10 minutos en segundos
       const cronometroDisplay = document.getElementById("cronometro-display");
       const cronometroContainer = document.getElementById("cronometro-container");
       
@@ -562,34 +562,36 @@
       console.log('🔍 Verificando elementos del DOM:');
       console.log('  - cronometro-display:', !!cronometroDisplay, cronometroDisplay);
       console.log('  - cronometro-container:', !!cronometroContainer, cronometroContainer);
-      console.log('  - body:', !!document.body);
-      console.log('  - head:', !!document.head);
       
       if (!cronometroDisplay || !cronometroContainer) {
         console.error('❌ Elementos del cronómetro no encontrados');
-        console.log('📋 Todos los elementos con ID:');
-        Array.from(document.querySelectorAll('[id]')).forEach(el => {
-          console.log(`  - ${el.id}: ${el.tagName}`);
-        });
         return;
       }
       
-      // Mostrar el cronómetro con logging detallado
-      console.log('🔧 Estado antes de mostrar:', {
-        containerDisplay: cronometroContainer.style.display,
-        containerClasses: cronometroContainer.className,
-        displayText: cronometroDisplay.textContent
-      });
+      // Calcular tiempo restante basado en cuándo se asignó la mesa
+      let tiempoRestante;
+      if (asignada_at) {
+        const asignacion = new Date(asignada_at);
+        const ahora = new Date();
+        const tiempoTranscurrido = Math.floor((ahora - asignacion) / 1000); // en segundos
+        tiempoRestante = Math.max(0, (10 * 60) - tiempoTranscurrido); // 10 minutos menos tiempo transcurrido
+        
+        console.log('⏰ Cálculo de tiempo:', {
+          asignacion: asignacion.toISOString(),
+          ahora: ahora.toISOString(),
+          tiempoTranscurrido: tiempoTranscurrido,
+          tiempoRestante: tiempoRestante
+        });
+      } else {
+        // Si no hay timestamp, usar 10 minutos completos (fallback)
+        tiempoRestante = 10 * 60;
+        console.log('⚠️ No hay timestamp de asignación, usando 10 minutos completos');
+      }
       
+      // Mostrar el cronómetro con logging detallado
       cronometroContainer.classList.remove("hidden");
       cronometroContainer.style.display = "block";
       cronometroContainer.style.visibility = "visible";
-      
-      console.log('🔧 Estado después de mostrar:', {
-        containerDisplay: cronometroContainer.style.display,
-        containerClasses: cronometroContainer.className,
-        isVisible: cronometroContainer.offsetHeight > 0
-      });
       
       function actualizarCronometro() {
         // Verificar que el elemento aún existe
@@ -613,15 +615,6 @@
         // Log detallado cada 30 segundos
         if (tiempoRestante % 30 === 0) {
           console.log(`⏰ Cronómetro actualizado: ${tiempoTexto}`);
-          console.log('📊 Estado del elemento:', {
-            texto: displayActual.textContent,
-            visible: displayActual.offsetHeight > 0,
-            estilos: {
-              display: displayActual.style.display,
-              visibility: displayActual.style.visibility,
-              color: displayActual.style.color
-            }
-          });
         }
         
         // Cambiar color según el tiempo restante
@@ -721,7 +714,7 @@
     // Actualizar tiempo de espera cada 30 segundos
     setInterval(actualizarTiempoEsperaPromedio, 30000);
 
-    // Sistema de heartbeat para mantener conexión activa
+    // Sistema de heartbeat simplificado para mantener conexión activa
     let heartbeatInterval;
     
     function iniciarHeartbeat() {
@@ -735,13 +728,13 @@
           socket.emit('heartbeat', { 
             cliente_id: id, 
             timestamp: Date.now(),
-            page_visible: document.visibilityState === 'visible'
+            page_visible: true
           });
         } else if (!socket.connected) {
           console.log('💔 Socket desconectado durante heartbeat, reconectando...');
           socket.connect();
         }
-      }, 15000); // Cada 15 segundos
+      }, 30000); // Cada 30 segundos (reducido de 15)
     }
     
     // Iniciar heartbeat cuando se conecte
@@ -813,9 +806,9 @@
         console.log('🔔 Iniciando proceso de notificación...');
         mostrarNotificacionTurno(data.mesa);
         
-        // Iniciar cronómetro con debugging
+        // Iniciar cronómetro con timestamp de asignación
         console.log('⏰ Iniciando proceso de cronómetro...');
-        iniciarCronometro();
+        iniciarCronometro(data.asignada_at);
         
         console.log('✅ Proceso de turno completado exitosamente');
         

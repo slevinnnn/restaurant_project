@@ -18,6 +18,7 @@ class Cliente(db.Model):
     assigned_table = db.Column(db.Integer, nullable=True)
     sid = db.Column(db.String, nullable=True)  # Socket session ID
     atendido_at = db.Column(db.DateTime, nullable=True)  # Cuándo fue atendido
+    mesa_asignada_at = db.Column(db.DateTime, nullable=True)  # Cuándo se le asignó la mesa (para cronómetro)
 
 class Mesa(db.Model):
     id = db.Column(db.Integer, primary_key=True)
