@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head><title>Cliente</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <link rel="stylesheet" href="/static/styles/output.css">
   <link href="https://fonts.googleapis.com/css2?family=Industry+Inc:wght@300;400;500;700&display=swap" rel="stylesheet">
   <style>
@@ -55,6 +56,123 @@
       text-shadow: 1px 1px 2px rgba(0,0,0,0.1) !important;
     }
     
+    /* Cronómetro más grande para móviles con proporciones áureas */
+    @media (max-width: 768px) {
+      #cronometro-container {
+  position: relative !important; /* deja fluir bajo el mensaje */
+  top: auto !important;
+  left: auto !important;
+  transform: none !important;
+  width: 92vw !important;
+  height: auto !important;
+  max-width: 480px !important;
+  padding: 18px 16px !important;
+  margin: 12px auto 40px auto !important; /* espacio bajo el mensaje */
+  z-index: 5 !important;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.25) !important;
+  border-radius: 18px !important;
+  background: #ffffff !important;
+  border: 2px solid #d9e2ec !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+      }
+      
+      #cronometro-display {
+  font-size: 3.6rem !important; /* reducido para no chocar */
+  margin: 0.25rem 0 0.35rem 0 !important;
+  line-height: 1 !important;
+  font-weight: 800 !important;
+  color: #1e3a8a !important;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.08) !important;
+  font-family: 'Courier New', 'SF Mono', monospace !important;
+  letter-spacing: -1px !important;
+      }
+      
+      .cronometro-title {
+  font-size: 1.15rem !important;
+  margin-bottom: 0.35rem !important;
+  font-weight: 600 !important;
+  color: #334155 !important;
+  text-align: center !important;
+      }
+      
+      .cronometro-message {
+  font-size: 0.95rem !important;
+  margin-top: 0.4rem !important;
+  line-height: 1.25 !important;
+  font-weight: 500 !important;
+  color: #64748b !important;
+  text-align: center !important;
+  padding: 0 6px !important;
+      }
+    }
+    
+    /* Para móviles muy pequeños - ajustar para mantener proporciones */
+    @media (max-width: 480px) {
+      #cronometro-container {
+  width: 94vw !important;
+  height: auto !important;
+  max-width: 440px !important;
+  padding: 16px 14px !important;
+  margin: 10px auto 34px auto !important;
+      }
+      
+      #cronometro-display {
+  font-size: 3.2rem !important;
+  letter-spacing: -0.5px !important;
+      }
+      
+      .cronometro-title {
+  font-size: 1.05rem !important;
+  margin-bottom: 0.3rem !important;
+      }
+      
+      .cronometro-message {
+  font-size: 0.85rem !important;
+  margin-top: 0.3rem !important;
+      }
+    }
+    
+    /* Para móviles extra pequeños */
+    @media (max-width: 320px) {
+      #cronometro-container {
+        width: 96vw !important;
+        height: auto !important;
+      }
+      
+      #cronometro-display {
+        font-size: 2.9rem !important;
+      }
+      
+      .cronometro-title {
+        font-size: 0.95rem !important;
+      }
+      
+      .cronometro-message {
+        font-size: 0.8rem !important;
+      }
+    }
+
+    /* Mensaje de turno separado y con espacio asegurado arriba */
+    #estado.turno-activo-msg {
+      margin-top: 6vh !important;
+      margin-bottom: 4px !important;
+      padding: 6px 8px !important;
+      line-height: 1.25 !important;
+      z-index: 10 !important;
+      position: relative !important;
+      text-align: center !important;
+      display: block !important;
+    }
+    @media (max-width:768px){
+      #estado.turno-activo-msg { font-size: 1.55rem !important; }
+    }
+    @media (max-width:480px){
+      #estado.turno-activo-msg { font-size: 1.35rem !important; }
+    }
+    
     .cronometro-content {
       text-align: center !important;
     }
@@ -92,6 +210,91 @@
       visibility: visible !important;
       opacity: 1 !important;
     }
+    /* Asegurar que si tiene la clase hidden realmente no se muestre (refuerzo) */
+    #cronometro-container.hidden {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+    }
+    
+    /* Ajuste específico para dispositivos ~360x720 (Android comunes) */
+    @media (max-width: 400px) and (min-height: 640px) {
+      #cronometro-container {
+        width: 92vw !important;
+        /* altura mínima 30% pantalla */
+        min-height: 30vh !important;
+        height: auto !important;
+        padding: 28px 18px !important;
+        border-width: 3px !important;
+      }
+      #cronometro-display {
+        font-size: 5.2rem !important;
+        letter-spacing: -1px !important;
+      }
+      .cronometro-title { font-size: 1.25rem !important; }
+      .cronometro-message { font-size: 1.05rem !important; }
+    }
+
+    /* Si la altura disponible es muy baja (teclado abierto / landscape) */
+    @media (max-width: 400px) and (max-height: 540px) {
+      #cronometro-container {
+        position: fixed !important;
+        top: 8vh !important;
+        transform: translate(-50%, 0) !important;
+        min-height: 32vh !important;
+        width: 94vw !important;
+      }
+      #cronometro-display { font-size: 4.4rem !important; }
+    }
+
+    /* Forzar que siempre tenga >30% altura cuando esté visible */
+    #cronometro-container:not(.hidden) {
+      min-height: 30vh !important;
+    }
+
+    body.turno-activo #cronometro-container:not(.hidden){
+      margin-top: 12px !important;
+    }
+
+    .turno-wrapper { display:flex; flex-direction:column; align-items:center; gap:1.2rem; width:100%; }
+    .turno-mensaje { text-align:center; font-weight:700; font-size:2rem; line-height:1.15; }
+    .turno-mesa { display:block; margin-top:0.35rem; font-size:1.15rem; font-weight:600; }
+    @media (max-width:768px){
+      .turno-mensaje { font-size:1.75rem; }
+      .turno-mesa { font-size:1.1rem; }
+    }
+    /* Estado cuando se activa el turno: empujar cronómetro más abajo si no cabe */
+    @media (max-width:768px){
+      body.turno-activo #cronometro-container:not(.hidden){
+        position:static !important; /* dejar que fluya debajo del texto */
+        transform:none !important;
+        width:100% !important;
+        height:auto !important;
+        margin-top:0.5rem !important;
+      }
+    }
+
+    /* ---------------- Ajustes específicos para pantallas angostas (~360px) ---------------- */
+    @media (max-width: 400px) {
+      main { padding-top: 14vh !important; }
+      .container-card { padding: 0.85rem 0.9rem !important; }
+      .msj-bienvenida, .msj-actualmente, .msj-tu-numero, .msj-estado {
+        font-size: 0.95rem !important;
+        line-height: 1.3 !important; /* fix readability */
+        white-space: normal !important;
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
+        margin-bottom: 0.55rem !important;
+      }
+      .msj-bienvenida { font-weight: 600 !important; }
+      .msj-tu-numero strong, .msj-actualmente strong { font-size: 1.05rem !important; }
+      /* Evitar que el cronómetro reserve espacio antes de mostrarse */
+      #cronometro-container.hidden { min-height: 0 !important; margin:0 !important; padding:0 !important; border:0 !important; }
+    }
+    /* Corrección de typo en line-height (override) */
+    @media (max-width: 400px) {
+      .msj-bienvenida, .msj-actualmente, .msj-tu-numero, .msj-estado { line-height: 1.3 !important; }
+    }
   </style>
 </head>
 <body>
@@ -101,12 +304,14 @@
     <div></div> <!-- Espacio vacío para mantener el logo a la izquierda -->
   </header>
 
-  <main style="padding-top: 12vh;">
-    <p class="msj-bienvenida" id="bienvenida">Bienvenid@ {% if nombre %}{{ nombre }}{% endif %}</p>
-    <p class="msj-actualmente" id="actualmente">Actualmente atendiendo al número: <strong id="atendiendo"></strong></p>
-    <p class="msj-tu-numero" id="tu-numero">Tu número en la fila es: <strong>{{ numero }}</strong></p>
-    
-    <p class="msj-estado" id="estado">Esperando tu turno...</p>
+  <main style="padding-top: 20vh;">
+    <div class="container-card">
+      <p class="msj-bienvenida" id="bienvenida">Bienvenid@ {% if nombre %}{{ nombre }}{% endif %}</p>
+      <p class="msj-actualmente" id="actualmente">Actualmente atendiendo al número: <strong id="atendiendo"></strong></p>
+      <p class="msj-tu-numero" id="tu-numero">Tu número en la fila es: <strong>{{ numero }}</strong></p>
+      
+  <p class="msj-estado" id="estado" style="text-align:center;">Esperando tu turno...</p>
+    </div>
     
     <!-- Botón para activar notificaciones (oculto por defecto) -->
     <div id="notification-prompt" class="notification-prompt hidden">
@@ -489,8 +694,9 @@
                     iniciarCronometro(data.mesa_asignada_at);
                     
                     // Actualizar interfaz
-                    document.getElementById("estado").className = "font-bold text-6xl text-green-600";
-                    document.getElementById("estado").innerText = "¡Es tu turno! Ve a la mesa " + data.mesa_asignada;
+                    const estadoEl = document.getElementById("estado");
+                    estadoEl.className = "font-bold text-green-600 turno-activo-msg";
+                    estadoEl.innerHTML = `¡Es tu turno{% if nombre %} {{ nombre }}{% endif %}!<br><span style="font-weight:600;">Ve a la mesa <span style="color:#1e3a8a;">${data.mesa_asignada}</span></span>`;
                     document.getElementById("actualmente").style.display = "none";
                     document.getElementById("atendiendo").style.display = "none";
                     document.getElementById("tu-numero").style.display = "none";
@@ -554,6 +760,12 @@
       console.log('🌐 URL actual:', window.location.href);
       console.log('📱 User Agent:', navigator.userAgent.substring(0, 100));
       console.log('👁️ Visibilidad página:', document.visibilityState);
+
+      // NUEVO: No iniciar ni mostrar el cronómetro si no hay timestamp válido (mesa aún no asignada)
+      if(!asignada_at){
+        console.warn('⛔ Cronómetro no iniciado: no hay mesa asignada todavía');
+        return; // Salimos sin tocar el DOM del cronómetro
+      }
       
       const cronometroDisplay = document.getElementById("cronometro-display");
       const cronometroContainer = document.getElementById("cronometro-container");
@@ -569,24 +781,17 @@
       }
       
       // Calcular tiempo restante basado en cuándo se asignó la mesa
-      let tiempoRestante;
-      if (asignada_at) {
-        const asignacion = new Date(asignada_at);
-        const ahora = new Date();
-        const tiempoTranscurrido = Math.floor((ahora - asignacion) / 1000); // en segundos
-        tiempoRestante = Math.max(0, (10 * 60) - tiempoTranscurrido); // 10 minutos menos tiempo transcurrido
-        
-        console.log('⏰ Cálculo de tiempo:', {
-          asignacion: asignacion.toISOString(),
-          ahora: ahora.toISOString(),
-          tiempoTranscurrido: tiempoTranscurrido,
-          tiempoRestante: tiempoRestante
-        });
-      } else {
-        // Si no hay timestamp, usar 10 minutos completos (fallback)
-        tiempoRestante = 10 * 60;
-        console.log('⚠️ No hay timestamp de asignación, usando 10 minutos completos');
-      }
+  let tiempoRestante; /* variable declarada arriba para uso posterior */
+      const asignacion = new Date(asignada_at);
+      const ahora = new Date();
+      const tiempoTranscurrido = Math.floor((ahora - asignacion) / 1000); // en segundos
+  tiempoRestante = Math.max(0, (10 * 60) - tiempoTranscurrido); // 10 minutos menos tiempo transcurrido
+      console.log('⏰ Cálculo de tiempo:', {
+        asignacion: asignacion.toISOString(),
+        ahora: ahora.toISOString(),
+        tiempoTranscurrido: tiempoTranscurrido,
+        tiempoRestante: tiempoRestante
+      });
       
       // Mostrar el cronómetro con logging detallado
       cronometroContainer.classList.remove("hidden");
@@ -789,8 +994,8 @@
         });
         
         if (estadoElement) {
-          estadoElement.className = "font-bold text-6xl text-green-600";
-          estadoElement.innerText = "¡Es tu turno! Ve a la mesa " + data.mesa;
+          estadoElement.className = "font-bold text-green-600 turno-activo-msg";
+          estadoElement.innerHTML = `¡Es tu turno{% if nombre %} {{ nombre }}{% endif %}!<br><span style="font-weight:600;">Ve a la mesa <span style=\"color:#1e3a8a;\">${data.mesa}</span></span>`;
           console.log('✅ Estado actualizado');
         }
         
@@ -828,6 +1033,13 @@
     socket.on("actualizar_cola", () => {
       actualizarTiempoEsperaPromedio();
     });
+
+    function mostrarTurnoEnPantalla(nombreCliente, mesa){
+      const estado = document.getElementById('estado');
+      if(!estado) return;
+      document.body.classList.add('turno-activo');
+      estado.innerHTML = `<span class="turno-mensaje">¡Es tu turno ${nombreCliente || ''}!<br><span class="turno-mesa">Ve a la mesa ${mesa}</span></span>`;
+    }
   </script>
 </body>
 </html>

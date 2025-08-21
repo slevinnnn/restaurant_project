@@ -812,6 +812,7 @@ main {
 /* Estilos para el cronómetro */
 .cronometro-container {
   position: fixed;
+
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
@@ -823,12 +824,14 @@ main {
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
   border: 2px solid #e5e7eb;
   z-index: 1000;
+  width: 30vw;
+  height: 30vh;
   min-width: 300px;
   animation: cronometroFadeIn 0.5s ease-out;
 }
 
 .cronometro-display {
-  font-size: 4rem;
+  font-size: 10rem;
   font-weight: bold;
   margin: 20px 0;
   font-family: 'Courier New', monospace;
@@ -836,14 +839,14 @@ main {
 }
 
 .cronometro-title {
-  font-size: 1.5rem;
+  font-size: 6rem;
   font-weight: 600;
   color: #374151;
   margin-bottom: 10px;
 }
 
 .cronometro-message {
-  font-size: 1.1rem;
+  font-size: 4rem;
   color: #6b7280;
   margin-top: 15px;
   line-height: 1.4;
@@ -898,25 +901,108 @@ main {
   z-index: 999;
 }
 
-/* Responsive para móviles */
+/* Responsive para móviles - Cronómetro con proporciones áureas */
 @media (max-width: 640px) {
   .cronometro-container {
-    padding: 20px;
-    min-width: 280px;
-    margin: 0 20px;
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 85vw !important;
+    height: 52.5vw !important; /* 85vw / 1.618 = proporción áurea */
+    max-width: 400px !important;
+    max-height: 247px !important; /* 400px / 1.618 */
+    padding: 30px 20px !important;
+    z-index: 10000 !important;
+    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6) !important;
+    border-radius: 20px !important;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
+    border: 3px solid #e2e8f0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    margin: 0 !important;
   }
   
   .cronometro-display {
-    font-size: 3rem;
+    font-size: 4.5rem !important;
+    margin: 0.5rem 0 !important;
+    line-height: 0.9 !important;
+    font-weight: 900 !important;
+    color: #1e40af !important;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.1) !important;
+    font-family: 'Courier New', 'SF Mono', monospace !important;
+    letter-spacing: -2px !important;
   }
   
   .cronometro-title {
-    font-size: 1.3rem;
+    font-size: 1.4rem !important;
+    margin-bottom: 0.8rem !important;
+    font-weight: 700 !important;
+    color: #374151 !important;
+    text-align: center !important;
   }
   
   .cronometro-message {
-    font-size: 1rem;
+    font-size: 1.1rem !important;
+    margin-top: 0.8rem !important;
+    line-height: 1.3 !important;
+    font-weight: 500 !important;
+    color: #6b7280 !important;
+    text-align: center !important;
+    padding: 0 10px !important;
   }
+}
+
+/* Para móviles muy pequeños */
+@media (max-width: 480px) {
+  .cronometro-container {
+    width: 90vw !important;
+    height: 55.6vw !important; /* 90vw / 1.618 */
+    max-width: 380px !important;
+    max-height: 235px !important;
+    padding: 25px 15px !important;
+  }
+  
+  .cronometro-display {
+    font-size: 4rem !important;
+    letter-spacing: -1px !important;
+  }
+  
+  .cronometro-title {
+    font-size: 1.3rem !important;
+    margin-bottom: 0.6rem !important;
+  }
+  
+  .cronometro-message {
+    font-size: 1rem !important;
+    margin-top: 0.6rem !important;
+  }
+}
+
+/* Para móviles extra pequeños */
+@media (max-width: 360px) {
+  .cronometro-container {
+    width: 95vw !important;
+    height: 58.7vw !important; /* 95vw / 1.618 */
+  }
+  
+  .cronometro-display {
+    font-size: 3.5rem !important;
+  }
+  
+  .cronometro-title {
+    font-size: 1.2rem !important;
+  }
+  
+  .cronometro-message {
+    font-size: 0.95rem !important;
+  }
+}
+
+.container-card {
+  @apply bg-white shadow-md rounded-xl p-6 mb-6;
 }
 
 /* Estilos para el prompt de notificaciones */

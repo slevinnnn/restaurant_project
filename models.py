@@ -45,6 +45,7 @@ class Trabajador(db.Model):
 
     __table_args__ = (
         db.UniqueConstraint('email', name='uq_trabajador_email'),
+
     )
 
     @staticmethod
