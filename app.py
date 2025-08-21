@@ -700,6 +700,32 @@ def registrar_cliente(data):
         print(f"Error en registrar_cliente: {e}")
         return False
 
+@socketio.on("heartbeat")
+def manejar_heartbeat(data):
+    """Manejar heartbeat del cliente para mantener conexión activa y verificar estado"""
+    try:
+        cliente_id = data.get('cliente_id')
+        page_visible = data.get('page_visible', True)
+        
+        if not cliente_id:
+            return False
+            
+        print(f"💓 Heartbeat de cliente {cliente_id}, página visible: {page_visible}")
+        
+        # Solo verificar estado si la página está visible (para evitar spam)
+        if page_visible:
+            cliente = db.session.get(Cliente, cliente_id)
+            if cliente and cliente.assigned_table:
+                print(f"🎯 Cliente {cliente_id} ya tiene mesa {cliente.assigned_table} asignada")
+                # Emitir evento de turno por si no lo recibió antes
+                socketio.emit("es_tu_turno", {"mesa": cliente.assigned_table}, room=cliente.sid)
+                
+        return True
+        
+    except Exception as e:
+        print(f"Error en heartbeat: {e}")
+        return False
+
 @app.route('/clientes')
 @worker_required
 def obtener_clientes():
@@ -917,6 +943,29 @@ def tiempo_espera_promedio():
         "promedio_segundos": promedio_segundos,
         "promedio_minutos": promedio_minutos
     })
+
+@app.route('/verificar_estado_cliente/<int:cliente_id>')
+def verificar_estado_cliente(cliente_id):
+    """Verificar si un cliente ya tiene mesa asignada"""
+    try:
+        cliente = db.session.get(Cliente, cliente_id)
+        
+        if not cliente:
+            return jsonify({'error': 'Cliente no encontrado'}), 404
+        
+        response = {
+            'cliente_id': cliente_id,
+            'nombre': cliente.nombre,
+            'mesa_asignada': cliente.assigned_table,
+            'joined_at': cliente.joined_at.isoformat() if cliente.joined_at else None,
+            'tiene_mesa': cliente.assigned_table is not None
+        }
+        
+        return jsonify(response)
+        
+    except Exception as e:
+        print(f"Error verificando estado del cliente {cliente_id}: {e}")
+        return jsonify({'error': 'Error interno del servidor'}), 500
 
 if __name__ == "__main__":
     # Ejecutar migraciones automáticamente en producción

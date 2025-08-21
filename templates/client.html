@@ -441,14 +441,91 @@
         }
       }
       
-      // Registrar eventos para mantener conexión activa
+      // Registrar eventos para mantener conexión activa y detectar cambios de pestaña
+      let lastVisibilityCheck = Date.now();
+      let wasHidden = false;
+      
       document.addEventListener('visibilitychange', () => {
+        const now = Date.now();
+        const timeSinceLastCheck = now - lastVisibilityCheck;
+        
+        console.log('👁️ Cambio de visibilidad detectado:', {
+          estado: document.visibilityState,
+          tiempoOculto: wasHidden ? timeSinceLastCheck : 0,
+          socketConectado: socket.connected
+        });
+        
         if (document.visibilityState === 'visible') {
-          console.log('👁️ Página visible - reconectando socket');
-          if (socket.disconnected) {
+          console.log('✅ Página ahora visible - verificando estado...');
+          
+          // Si estuvo oculta por más de 1 segundo, forzar reconexión
+          if (wasHidden && timeSinceLastCheck > 1000) {
+            console.log('🔄 Reconectando después de estar oculta...');
+            
+            // Forzar reconexión del socket
+            if (socket.connected) {
+              socket.disconnect();
+            }
+            socket.connect();
+            
+            // Re-registrar cliente después de un momento
+            setTimeout(() => {
+              console.log('📝 Re-registrando cliente después de reconexión...');
+              socket.emit("registrar_cliente", { id: id });
+              
+              // Verificar estado actual del cliente
+              fetch(`/verificar_estado_cliente/${id}`)
+                .then(response => response.json())
+                .then(data => {
+                  console.log('📊 Estado actual del cliente:', data);
+                  
+                  // Si ya tiene mesa asignada, mostrar notificación
+                  if (data.mesa_asignada && !notificationShown) {
+                    console.log('🎉 Cliente ya tenía mesa asignada:', data.mesa_asignada);
+                    lastKnownMesa = data.mesa_asignada;
+                    notificationShown = true;
+                    
+                    mostrarNotificacionTurno(data.mesa_asignada);
+                    iniciarCronometro();
+                    
+                    // Actualizar interfaz
+                    document.getElementById("estado").className = "font-bold text-6xl text-green-600";
+                    document.getElementById("estado").innerText = "¡Es tu turno! Ve a la mesa " + data.mesa_asignada;
+                    document.getElementById("actualmente").style.display = "none";
+                    document.getElementById("atendiendo").style.display = "none";
+                    document.getElementById("tu-numero").style.display = "none";
+                    document.getElementById("bienvenida").style.display = "none";
+                    document.getElementById("tiempo-espera-container").style.display = "none";
+                  }
+                })
+                .catch(error => {
+                  console.error('❌ Error verificando estado del cliente:', error);
+                });
+            }, 1000);
+          } else if (!socket.connected) {
+            console.log('🔌 Socket desconectado, reconectando...');
             socket.connect();
           }
+          
+          wasHidden = false;
+        } else {
+          console.log('👻 Página ahora oculta');
+          wasHidden = true;
         }
+        
+        lastVisibilityCheck = now;
+      });
+      
+      // También escuchar eventos de enfoque/desenfoque de la ventana
+      window.addEventListener('focus', () => {
+        console.log('🎯 Ventana enfocada - verificando conexión...');
+        if (!socket.connected) {
+          socket.connect();
+        }
+      });
+      
+      window.addEventListener('blur', () => {
+        console.log('💭 Ventana desenfocada');
       });
     });
 
@@ -614,14 +691,75 @@
     }
 
     socket.on("connect", () => {
+      console.log('🔌 Socket conectado exitosamente');
+      isConnected = true;
       socket.emit("registrar_cliente", { id: id });
       // Obtener tiempo de espera promedio al conectarse
       actualizarTiempoEsperaPromedio();
     });
 
+    socket.on("disconnect", (reason) => {
+      console.log('❌ Socket desconectado:', reason);
+      isConnected = false;
+      
+      // Si la desconexión no fue intencional, intentar reconectar
+      if (reason !== 'io client disconnect') {
+        console.log('🔄 Intentando reconectar en 2 segundos...');
+        setTimeout(() => {
+          if (!socket.connected) {
+            socket.connect();
+          }
+        }, 2000);
+      }
+    });
+
+    socket.on("connect_error", (error) => {
+      console.error('❌ Error de conexión del socket:', error);
+      isConnected = false;
+    });
+
     // Actualizar tiempo de espera cada 30 segundos
     setInterval(actualizarTiempoEsperaPromedio, 30000);
 
+    // Sistema de heartbeat para mantener conexión activa
+    let heartbeatInterval;
+    
+    function iniciarHeartbeat() {
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+      }
+      
+      heartbeatInterval = setInterval(() => {
+        if (socket.connected && document.visibilityState === 'visible') {
+          console.log('💓 Enviando heartbeat...');
+          socket.emit('heartbeat', { 
+            cliente_id: id, 
+            timestamp: Date.now(),
+            page_visible: document.visibilityState === 'visible'
+          });
+        } else if (!socket.connected) {
+          console.log('💔 Socket desconectado durante heartbeat, reconectando...');
+          socket.connect();
+        }
+      }, 15000); // Cada 15 segundos
+    }
+    
+    // Iniciar heartbeat cuando se conecte
+    socket.on("connect", () => {
+      iniciarHeartbeat();
+    });
+    
+    // Detener heartbeat cuando se desconecte
+    socket.on("disconnect", () => {
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+      }
+    });
+
+    let isConnected = false;
+    let lastKnownMesa = null;
+    let notificationShown = false;
+    
     socket.on("es_tu_turno", (data) => {
       console.log('🎉 === EVENTO ES_TU_TURNO RECIBIDO ===');
       console.log('📦 Data recibida:', data);
@@ -629,6 +767,15 @@
       console.log('📱 Plataforma:', navigator.platform);
       console.log('👁️ Documento visible:', document.visibilityState);
       console.log('🔌 Socket conectado:', socket.connected);
+      
+      // Evitar procesar el mismo evento múltiples veces
+      if (lastKnownMesa === data.mesa && notificationShown) {
+        console.log('⚠️ Evento duplicado ignorado para mesa', data.mesa);
+        return;
+      }
+      
+      lastKnownMesa = data.mesa;
+      notificationShown = true;
       
       try {
         // Actualizar elementos de la interfaz
