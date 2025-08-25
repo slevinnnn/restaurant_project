@@ -671,7 +671,7 @@
             👥 Cambiar Capacidad
           </button>
         `;
-      } else if (estado === 'ocupada') {
+    } else if (estado === 'ocupada') {
         buttons = `
           <button onclick="mostrarOrden(${mesaId})" class="w-full bg-yellow-50 hover:bg-yellow-100 text-yellow-700 rounded-lg transition-colors border border-yellow-200">
             📝 Orden
@@ -679,7 +679,7 @@
           <button onclick="accionMesa(${mesaId}, '${estado}')" class="w-full bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-lg transition-colors border border-orange-200">
             ⏯️ Desocupar
           </button>
-          <button class="w-full bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-colors border border-red-200">
+      <button onclick="desocuparYReservar(${mesaId})" class="w-full bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-colors border border-red-200">
             🔓 Des. y Reservar
           </button>
         `;
@@ -706,7 +706,7 @@
           <button onclick="mostrarOrden(${mesaId})" class="w-full bg-yellow-50 hover:bg-yellow-100 text-yellow-700 rounded-lg transition-colors border border-yellow-200">
             📝 Orden
           </button>
-          <button class="w-full bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-colors border border-red-200">
+          <button onclick="desocuparYCancelar(${mesaId})" class="w-full bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-colors border border-red-200">
             ❌ Desocupar y Cancelar
           </button>
           <button onclick="accionMesa(${mesaId},'ocupada')" class="w-full bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition-colors border border-green-200">
@@ -820,6 +820,70 @@
           if (data.success) {
             hidePopover();
           }
+        });
+    }
+
+    function desocuparYCancelar(mesaId){
+      fetch(`/desocupar_y_cancelar/${mesaId}`, { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+          if(data.success){
+            limpiarTemporizador(mesaId);
+            const mesaElement = document.getElementById(`mesa-${mesaId}`);
+            if(mesaElement){
+              // Si se reasignó automáticamente, el refresh por socket actualizará.
+              if(!data.asignada){
+                mesaElement.classList.remove('ocupada','reservada','reservada-ocupada','recien-asignada');
+                mesaElement.dataset.estado = 'libre';
+                const icon = mesaElement.querySelector('.mesa-icon');
+                if(icon){
+                  icon.classList.remove('fa-user-clock','fa-calendar-times','fa-calendar-check','fa-clock');
+                  icon.classList.add('fa-utensils');
+                }
+                const statusText = mesaElement.querySelector('.mesa-status');
+                if(statusText){ statusText.textContent = 'Disponible'; }
+              }
+            }
+            hidePopover();
+          } else {
+            alert(`Error: ${data.error || 'No se pudo desocupar y cancelar'}`);
+          }
+        })
+        .catch(err => {
+          console.error('Error desocupar_y_cancelar:', err);
+          alert('Error de red al desocupar y cancelar');
+        });
+    }
+
+    function desocuparYReservar(mesaId){
+      fetch(`/desocupar_y_reservar/${mesaId}`, { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+          if(data.success){
+            // Limpiar temporizador si existía
+            limpiarTemporizador(mesaId);
+            // Actualizar UI localmente a 'reservada'
+            const mesaElement = document.getElementById(`mesa-${mesaId}`);
+            if(mesaElement){
+              mesaElement.classList.remove('ocupada','recien-asignada');
+              mesaElement.classList.add('reservada');
+              mesaElement.dataset.estado = 'reservada';
+              const icon = mesaElement.querySelector('.mesa-icon');
+              if(icon){
+                icon.classList.remove('fa-user-clock','fa-clock');
+                icon.classList.add('fa-calendar-check');
+              }
+              const statusText = mesaElement.querySelector('.mesa-status');
+              if(statusText){ statusText.textContent = 'Reservada'; }
+            }
+            hidePopover();
+          } else {
+            alert(`Error: ${data.error || 'No se pudo desocupar y reservar'}`);
+          }
+        })
+        .catch(err => {
+          console.error('Error desocupar_y_reservar:', err);
+          alert('Error de red al desocupar y reservar');
         });
     }
 

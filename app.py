@@ -608,6 +608,42 @@ def reservar_mesa(mesa_id):
         return jsonify({"success": True})
     return jsonify({"success": False})
 
+@app.route('/desocupar_y_reservar/<int:mesa_id>', methods=['POST'])
+@worker_required
+def desocupar_y_reservar(mesa_id):
+    """Desocupa una mesa ocupada y la deja marcada como reservada para evitar auto-asignación."""
+    try:
+        mesa = db.session.get(Mesa, mesa_id)
+        if not mesa or not mesa.is_occupied:
+            return jsonify({"success": False, "error": "Mesa no encontrada o no está ocupada"}), 400
+
+        # Registrar uso si corresponde
+        if mesa.start_time:
+            start_time_chile = convert_to_chile_time(mesa.start_time)
+            current_time_chile = get_chile_time()
+            tiempo_usado = (current_time_chile - start_time_chile).total_seconds()
+        else:
+            tiempo_usado = 0
+        uso = UsoMesa(mesa_id=mesa.id, duracion=tiempo_usado)
+        db.session.add(uso)
+
+        # Desocupar y reservar
+        mesa.is_occupied = False
+        mesa.start_time = None
+        mesa.llego_comensal = False
+        mesa.orden = None
+        mesa.cliente_id = None
+        mesa.reservada = True
+
+        db.session.commit()
+
+        socketio.emit('actualizar_mesas')
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error en desocupar_y_reservar: {e}")
+        return jsonify({"success": False, "error": f"Error interno: {str(e)}"}), 500
+
 @app.route('/cancelar_reserva/<int:mesa_id>', methods=['POST'])
 @worker_required
 def cancelar_reserva(mesa_id):
@@ -667,6 +703,69 @@ def cancelar_reserva(mesa_id):
         db.session.rollback()
         print(f"Error en cancelar_reserva: {e}")
         return jsonify({"success": False, "error": f"Error interno: {str(e)}"})
+
+@app.route('/desocupar_y_cancelar/<int:mesa_id>', methods=['POST'])
+@worker_required
+def desocupar_y_cancelar(mesa_id):
+    """Desocupa una mesa que está ocupada (y posiblemente reservada) y cancela su reserva.
+    Luego la deja disponible; si el primer cliente en la fila cabe, se asigna automáticamente.
+    """
+    try:
+        mesa = db.session.get(Mesa, mesa_id)
+        if not mesa or not mesa.is_occupied:
+            return jsonify({"success": False, "error": "Mesa no encontrada o no está ocupada"}), 400
+
+        # Registrar uso si corresponde
+        if mesa.start_time:
+            start_time_chile = convert_to_chile_time(mesa.start_time)
+            current_time_chile = get_chile_time()
+            tiempo_usado = (current_time_chile - start_time_chile).total_seconds()
+        else:
+            tiempo_usado = 0
+        db.session.add(UsoMesa(mesa_id=mesa.id, duracion=tiempo_usado))
+
+        # Desocupar y cancelar reserva
+        mesa.is_occupied = False
+        mesa.start_time = None
+        mesa.llego_comensal = False
+        mesa.orden = None
+        mesa.cliente_id = None
+        mesa.reservada = False
+
+        # Intentar asignar al primer cliente si cabe; si no cabe, se deja libre sin reservar
+        siguiente = buscar_siguiente_cliente_en_orden()
+        cliente_notificado = None
+        if siguiente and puede_asignar_cliente_a_mesa(siguiente, mesa):
+            siguiente.assigned_table = mesa.id
+            siguiente.atendido_at = get_chile_time()
+            siguiente.mesa_asignada_at = get_chile_time()
+            mesa.is_occupied = True
+            mesa.start_time = get_chile_time()
+            mesa.cliente_id = siguiente.id
+            mesa.llego_comensal = False
+            # Limpiar sesión si corresponde
+            if 'cliente_id' in session and session['cliente_id'] == siguiente.id:
+                session.pop('cliente_id', None)
+            cliente_notificado = siguiente
+
+        db.session.commit()
+
+        # Notificar al cliente asignado, si corresponde
+        if cliente_notificado and cliente_notificado.sid:
+            socketio.emit("es_tu_turno", {
+                "mesa": mesa.id,
+                "asignada_at": cliente_notificado.mesa_asignada_at.isoformat() if cliente_notificado.mesa_asignada_at else None
+            }, to=cliente_notificado.sid)
+
+        socketio.emit('actualizar_mesas')
+        socketio.emit('actualizar_lista_clientes')
+        enviar_estado_cola()
+
+        return jsonify({"success": True, "mesa": mesa.id, "asignada": bool(cliente_notificado)})
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error en desocupar_y_cancelar: {e}")
+        return jsonify({"success": False, "error": f"Error interno: {str(e)}"}), 500
 
 
 
