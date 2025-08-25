@@ -350,7 +350,9 @@
 
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <script>
-    const id = {{ numero }};
+  const id = {{ numero|tojson }};
+  const mesaAsignadaInicial = {{ mesa_asignada|tojson }};
+  const mesaAsignadaAtInicial = {{ mesa_asignada_at|tojson }};
   const socket = io();
   let cronometroInterval = null;
   let cronometroAsignacion = null; // Date del momento de asignación para cálculo absoluto
@@ -734,6 +736,27 @@
       window.addEventListener('blur', () => {
         console.log('💭 Ventana desenfocada');
       });
+
+      // Restaurar estado si ya había mesa asignada (evita re-creación tras refresh)
+      try {
+        if (mesaAsignadaInicial && mesaAsignadaAtInicial) {
+          console.log('♻️ Restaurando estado de turno tras recarga:', mesaAsignadaInicial, mesaAsignadaAtInicial);
+          // Actualizar interfaz a estado de turno activo
+          const estadoEl = document.getElementById("estado");
+          estadoEl.className = "font-bold text-green-600 turno-activo-msg";
+          estadoEl.innerHTML = `¡Es tu turno{% if nombre %} {{ nombre }}{% endif %}!<br><span style="font-weight:600;">Ve a la mesa <span style="color:#1e3a8a;">${mesaAsignadaInicial}</span></span>`;
+          document.getElementById("actualmente").style.display = "none";
+          document.getElementById("atendiendo").style.display = "none";
+          document.getElementById("tu-numero").style.display = "none";
+          document.getElementById("bienvenida").style.display = "none";
+          document.getElementById("tiempo-espera-container").style.display = "none";
+
+          // Iniciar cronómetro desde timestamp absoluto proporcionado por el backend
+          iniciarCronometro(mesaAsignadaAtInicial);
+        }
+      } catch (e) {
+        console.error('Error restaurando estado tras refresh:', e);
+      }
     });
 
     // ==================== FIN SISTEMA DE NOTIFICACIONES ====================

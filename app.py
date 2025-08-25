@@ -241,7 +241,13 @@ def cliente(nombre=None, cantidad_comensales=None):
         # Obtener el cliente existente
         cliente_existente = Cliente.query.get(session['cliente_id'])
         if cliente_existente:
-            return render_template('client.html', numero=cliente_existente.id, nombre=cliente_existente.nombre)
+            return render_template(
+                'client.html',
+                numero=cliente_existente.id,
+                nombre=cliente_existente.nombre,
+                mesa_asignada_at=cliente_existente.mesa_asignada_at.isoformat() if cliente_existente.mesa_asignada_at else None,
+                mesa_asignada=cliente_existente.assigned_table
+            )
     
     # Si no hay sesión o el cliente no existe, crear uno nuevo
     nombre = request.args.get('nombre')
@@ -249,10 +255,29 @@ def cliente(nombre=None, cantidad_comensales=None):
     
     # Solo crear nuevo cliente si venimos del formulario
     if nombre and cantidad_comensales:
+        # 1) Intentar reutilizar un cliente ya ASIGNADO recientemente para este nombre
+        try:
+            candidato = Cliente.query.filter_by(nombre=nombre).order_by(Cliente.id.desc()).first()
+            if candidato and candidato.mesa_asignada_at:
+                # Si fue asignado en los últimos 15 minutos, reutilizarlo
+                try:
+                    ahora_cl = get_chile_time()
+                    asignado_cl = convert_to_chile_time(candidato.mesa_asignada_at)
+                    if (ahora_cl - asignado_cl) <= timedelta(minutes=15):
+                        session['cliente_id'] = candidato.id
+                        # Importante: limpiar la URL para evitar recreaciones al refrescar
+                        return redirect(url_for('cliente'))
+                except Exception:
+                    # Si hay cualquier problema de timezone/None, ignorar y seguir flujo normal
+                    pass
+        except Exception as e:
+            print(f"Advertencia al intentar reutilizar cliente existente: {e}")
+
+        # 2) Crear un nuevo cliente (y luego redirigir a URL limpia sin querystring)
         nuevo = Cliente(
             joined_at=get_chile_time(),
             nombre=nombre,
-            cantidad_comensales=cantidad_comensales
+            cantidad_comensales=int(cantidad_comensales) if str(cantidad_comensales).isdigit() else cantidad_comensales
         )
         db.session.add(nuevo)
         db.session.commit()
@@ -262,7 +287,8 @@ def cliente(nombre=None, cantidad_comensales=None):
         socketio.emit('actualizar_cola')
         socketio.emit('actualizar_lista_clientes')
         enviar_estado_cola()
-        return render_template('client.html', numero=nuevo.id, nombre=nombre)
+        # Redirigir a URL limpia para evitar re-creación al refrescar
+        return redirect(url_for('cliente'))
     
     # Si no hay datos del formulario y no hay sesión, redirigir al landing
     return redirect(url_for('qr_landing'))
@@ -357,9 +383,7 @@ def liberar_mesa(mesa_id):
                     mesa_liberada.cliente_id = siguiente.id
                     mesa_liberada.llego_comensal = False
                     
-                    # Limpiar sesión si corresponde
-                    if 'cliente_id' in session and session['cliente_id'] == siguiente.id:
-                        session.pop('cliente_id', None)
+                # Mantener la sesión del cliente; no limpiar para soportar recargas sin duplicados
                     
                     mesas_asignadas.append((mesa_liberada.id, siguiente))
                     print(f"Mesa {mesa_liberada.id} (capacidad {mesa_liberada.capacidad}) reasignada automáticamente a primer cliente {siguiente.id} ({siguiente.cantidad_comensales} comensales)")
@@ -454,9 +478,7 @@ def asignar_cliente_a_mesas():
         
         db.session.commit()
         
-        # Limpiar la sesión si este era el cliente en sesión
-        if 'cliente_id' in session and session['cliente_id'] == cliente.id:
-            session.pop('cliente_id', None)
+    # Mantener la sesión del cliente; no limpiar para soportar recargas sin duplicados
         
         # Notificar al cliente
         if cliente.sid:
@@ -555,9 +577,7 @@ def asignar_cliente_multiple(cliente_id):
         
         db.session.commit()
         
-        # Limpiar la sesión si este era el cliente en sesión
-        if 'cliente_id' in session and session['cliente_id'] == cliente.id:
-            session.pop('cliente_id', None)
+    # Mantener la sesión del cliente; no limpiar para soportar recargas sin duplicados
         
         # Notificar al cliente después del commit exitoso
         if cliente.sid:
@@ -935,9 +955,7 @@ def clientes_espera():
 
 @app.route('/qr_landing', methods=['GET', 'POST'])
 def qr_landing():
-    # Limpiar la sesión del cliente anterior si existe
-    if 'cliente_id' in session:
-        session.pop('cliente_id', None)
+    # No limpiar la sesión aquí para permitir recargas sin duplicar clientes
     
     if request.method == 'POST':
         # Manejar datos JSON enviados desde la nueva interfaz
@@ -962,8 +980,12 @@ def qr_landing():
         except (ValueError, TypeError):
             return jsonify({'error': 'La cantidad de comensales debe ser un número'}), 400
         
-        # Retornar la URL de redirección en lugar de hacer redirect directo
-        redirect_url = url_for('cliente', nombre=nombre, cantidad_comensales=cantidad_comensales)
+        # Si ya hay un cliente en sesión, enviar directo a /cliente limpio
+        if 'cliente_id' in session:
+            redirect_url = url_for('cliente')
+        else:
+            # Retornar la URL de redirección con parámetros solo una vez; luego /cliente redirige a limpio
+            redirect_url = url_for('cliente', nombre=nombre, cantidad_comensales=cantidad_comensales)
         return jsonify({'redirect_url': redirect_url})
     
     return render_template('qr_landing.html')
