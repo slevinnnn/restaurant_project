@@ -880,8 +880,19 @@ def confirmar_llegada(mesa_id):
         if not mesa.is_occupied:
             return jsonify({"success": False, "error": "Mesa no está ocupada"})
         
-        # Confirmar llegada del comensal
-        mesa.llego_comensal = True
+        # Confirmar llegada del comensal en TODAS las mesas de este cliente
+        mesas_actualizadas = []
+        if mesa.cliente_id:
+            mesas_cliente = Mesa.query.filter_by(cliente_id=mesa.cliente_id, is_occupied=True).all()
+            for m in mesas_cliente:
+                if not m.llego_comensal:
+                    m.llego_comensal = True
+                    mesas_actualizadas.append(m.id)
+        else:
+            # Mesa ocupada manualmente sin cliente asignado: marcar solo esta mesa
+            if not mesa.llego_comensal:
+                mesa.llego_comensal = True
+                mesas_actualizadas.append(mesa.id)
         
         # Hacer commit
         db.session.commit()
@@ -889,7 +900,7 @@ def confirmar_llegada(mesa_id):
         # Emitir actualizaciones después del commit exitoso
         socketio.emit('actualizar_mesas')
         
-        return jsonify({"success": True})
+        return jsonify({"success": True, "mesas_actualizadas": mesas_actualizadas})
         
     except Exception as e:
         db.session.rollback()
