@@ -137,6 +137,12 @@
             transform: translateY(-2px);
         }
 
+        #phoneContainer:focus-within {
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+            transform: translateY(-2px);
+        }
+
         .guests-selector {
             display: flex;
             gap: 10px;
@@ -325,6 +331,14 @@
             </div>
 
             <div class="input-group">
+                <label class="input-label">Número de teléfono</label>
+                <div style="display: flex; align-items: center; background: #fff; border: 2px solid #e1e8ed; border-radius: 16px; transition: all 0.3s ease;" id="phoneContainer">
+                    <span style="padding: 16px 10px 16px 20px; color: #7f8c8d; font-size: 16px;">+569</span>
+                    <input type="tel" class="input-field" placeholder="12345678" id="customerPhone" name="telefono" style="border: none; padding: 16px 20px 16px 0; flex: 1; border-radius: 0;" maxlength="8">
+                </div>
+            </div>
+
+            <div class="input-group">
                 <label class="input-label">¿Cuántos comensales son?</label>
                 <div class="guests-selector">
                     <button type="button" class="guest-btn" data-guests="1">1</button>
@@ -367,10 +381,16 @@
         // Función para manejar el continuar
         function handleContinue() {
             const name = document.getElementById('customerName').value.trim();
+            const phone = document.getElementById('customerPhone').value.trim();
             const selectedGuests = document.querySelector('.guest-btn.active');
             
             if (!name) {
                 alert('Por favor, ingresa tu nombre');
+                return;
+            }
+            
+            if (!phone || phone.length !== 8 || !/^\d{8}$/.test(phone)) {
+                alert('Por favor, ingresa un número de teléfono válido (8 dígitos)');
                 return;
             }
             
@@ -391,6 +411,9 @@
                 guestsCount = customNumber;
             }
 
+            // Construir el número completo con prefijo chileno
+            const fullPhone = '+569' + phone;
+
             // Enviar datos al servidor
             fetch('/qr_landing', {
                 method: 'POST',
@@ -399,6 +422,7 @@
                 },
                 body: JSON.stringify({
                     nombre: name,
+                    telefono: fullPhone,
                     cantidad_comensales: guestsCount
                 })
             })

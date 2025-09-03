@@ -15,6 +15,7 @@
           <tr>
             <th class="text-xs sm:text-sm">ID</th>
             <th class="text-xs sm:text-sm">Nombre</th>
+            <th class="text-xs sm:text-sm">Teléfono</th>
             <th class="text-xs sm:text-sm">Comensales</th>
             <th class="text-xs sm:text-sm">Llegada</th>
             <th class="text-xs sm:text-sm">Espera</th>
@@ -24,7 +25,7 @@
         <tbody id="clientes-lista">
           {% if not clientes %}
           <tr>
-            <td colspan="6" class="px-6 py-4 text-center text-gray-500 font-medium">
+            <td colspan="7" class="px-6 py-4 text-center text-gray-500 font-medium">
               <div class="text-center py-8">
                 <p class="text-lg">🎉 No hay clientes en espera</p>
                 <p class="text-sm">Todos los clientes han sido atendidos</p>
@@ -35,7 +36,18 @@
           {% for c in clientes %}
           <tr>
             <td class="text-xs sm:text-sm whitespace-nowrap">#{{ c.id }}</td>
-            <td class="text-xs sm:text-sm whitespace-nowrap">{{ c.nombre|truncate(15) }}</td>
+            <td class="text-xs sm:text-sm whitespace-nowrap cursor-pointer" onclick="mostrarPopoverCliente({{ c.id }}, '{{ c.nombre }}', '{{ c.telefono }}', {{ c.cantidad_comensales }})">
+              {{ c.nombre|truncate(15) }}
+            </td>
+            <td class="text-xs sm:text-sm whitespace-nowrap">
+              {% if c.telefono %}
+                <button onclick="llamarCliente('{{ c.telefono }}')" class="text-blue-600 hover:text-blue-800" title="Llamar">
+                  📞 {{ c.telefono[-8:] }}
+                </button>
+              {% else %}
+                <span class="text-gray-400">Sin teléfono</span>
+              {% endif %}
+            </td>
             <td class="text-xs sm:text-sm text-center">{{ c.cantidad_comensales }}</td>
             <td class="text-xs sm:text-sm whitespace-nowrap">{{ c.joined_at.strftime('%H:%M') }}</td>
             <td class="text-xs sm:text-sm" id="wait-time-{{ c.id }}">
@@ -126,6 +138,21 @@
       // Actualizar tiempos cada segundo
       setInterval(updateWaitingTimes, 1000);
       updateWaitingTimes(); // Actualización inicial
+
+      // Función para llamar al cliente
+      function llamarCliente(telefono) {
+        if (telefono) {
+          window.open(`tel:${telefono}`, '_self');
+        }
+      }
+
+      // Función para mostrar popover con información del cliente
+      function mostrarPopoverCliente(clienteId, nombre, telefono, comensales) {
+        const mensaje = `Cliente: ${nombre}\nTeléfono: ${telefono || 'Sin teléfono'}\nComensales: ${comensales}`;
+        if (confirm(`${mensaje}\n\n¿Deseas llamar a este cliente?`)) {
+          llamarCliente(telefono);
+        }
+      }
 
       // Función para iniciar asignación manual
       function iniciarAsignacionManual(clienteId, clienteNombre, cantidadComensales) {
@@ -262,7 +289,7 @@
             if (data.length === 0) {
               const tr = document.createElement('tr');
               tr.innerHTML = `
-                <td colspan="6" class="px-6 py-4 text-center text-gray-500 font-medium">
+                <td colspan="7" class="px-6 py-4 text-center text-gray-500 font-medium">
                   <div class="text-center py-8">
                     <p class="text-lg">🎉 No hay clientes en espera</p>
                     <p class="text-sm">Todos los clientes han sido atendidos</p>
@@ -285,11 +312,19 @@
                       #${index + 1} en fila
                     </span>`;
                 
+                // Celda de teléfono
+                const telefonoCell = c.telefono 
+                  ? `<button onclick="llamarCliente('${c.telefono}')" class="text-blue-600 hover:text-blue-800" title="Llamar">
+                      📞 ${c.telefono.slice(-8)}
+                    </button>`
+                  : `<span class="text-gray-400">Sin teléfono</span>`;
+                
                 const tr = document.createElement('tr');
                 tr.className = 'border-b border-gray-200 hover:bg-gray-50';
                 tr.innerHTML = `
                   <td class="text-xs sm:text-sm whitespace-nowrap">#${c.id}</td>
-                  <td class="text-xs sm:text-sm whitespace-nowrap">${(c.nombre || 'Sin nombre').substring(0, 15)}</td>
+                  <td class="text-xs sm:text-sm whitespace-nowrap cursor-pointer" onclick="mostrarPopoverCliente(${c.id}, '${c.nombre}', '${c.telefono || ''}', ${c.cantidad_comensales})">${(c.nombre || 'Sin nombre').substring(0, 15)}</td>
+                  <td class="text-xs sm:text-sm whitespace-nowrap">${telefonoCell}</td>
                   <td class="text-xs sm:text-sm text-center">${c.cantidad_comensales || '-'}</td>
                   <td class="text-xs sm:text-sm whitespace-nowrap">${joinedDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
                   <td class="text-xs sm:text-sm" id="wait-time-${c.id}">

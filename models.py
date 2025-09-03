@@ -14,6 +14,7 @@ class Cliente(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=True)
     cantidad_comensales = db.Column(db.Integer, nullable=True)
+    telefono = db.Column(db.String(20), nullable=True)  # Número de teléfono chileno (+569XXXXXXXX)
     joined_at = db.Column(db.DateTime, default=get_chile_time)  # Usar función de hora de Chile
     assigned_table = db.Column(db.Integer, nullable=True)
     sid = db.Column(db.String, nullable=True)  # Socket session ID

@@ -235,7 +235,7 @@ except Exception:
         initialize_tables()
 
 @app.route('/cliente')
-def cliente(nombre=None, cantidad_comensales=None):
+def cliente(nombre=None, cantidad_comensales=None, telefono=None):
     # Verificar si ya existe un cliente_id en la sesión
     if 'cliente_id' in session:
         # Obtener el cliente existente
@@ -252,9 +252,10 @@ def cliente(nombre=None, cantidad_comensales=None):
     # Si no hay sesión o el cliente no existe, crear uno nuevo
     nombre = request.args.get('nombre')
     cantidad_comensales = request.args.get('cantidad_comensales')
+    telefono = request.args.get('telefono')
     
     # Solo crear nuevo cliente si venimos del formulario
-    if nombre and cantidad_comensales:
+    if nombre and cantidad_comensales and telefono:
         # 1) Intentar reutilizar un cliente ya ASIGNADO recientemente para este nombre
         try:
             candidato = Cliente.query.filter_by(nombre=nombre).order_by(Cliente.id.desc()).first()
@@ -277,6 +278,7 @@ def cliente(nombre=None, cantidad_comensales=None):
         nuevo = Cliente(
             joined_at=get_chile_time(),
             nombre=nombre,
+            telefono=telefono,
             cantidad_comensales=int(cantidad_comensales) if str(cantidad_comensales).isdigit() else cantidad_comensales
         )
         db.session.add(nuevo)
@@ -854,6 +856,7 @@ def obtener_clientes():
         {
             'id': c.id,
             'nombre': c.nombre,
+            'telefono': c.telefono,
             'cantidad_comensales': c.cantidad_comensales,
             'joined_at': c.joined_at.strftime('%Y-%m-%d %H:%M:%S')
         } for c in clientes
@@ -965,11 +968,19 @@ def qr_landing():
             return jsonify({'error': 'No se recibieron datos'}), 400
         
         nombre = data.get('nombre', '').strip()
+        telefono = data.get('telefono', '').strip()
         cantidad_comensales = data.get('cantidad_comensales')
         
         # Validaciones
         if not nombre:
             return jsonify({'error': 'El nombre es requerido'}), 400
+        
+        if not telefono:
+            return jsonify({'error': 'El teléfono es requerido'}), 400
+        
+        # Validar formato del teléfono chileno
+        if not telefono.startswith('+569') or len(telefono) != 12:
+            return jsonify({'error': 'El teléfono debe tener formato +569xxxxxxxx'}), 400
         
         if not cantidad_comensales or int(cantidad_comensales) < 1:
             return jsonify({'error': 'La cantidad de comensales debe ser válida'}), 400
@@ -985,7 +996,7 @@ def qr_landing():
             redirect_url = url_for('cliente')
         else:
             # Retornar la URL de redirección con parámetros solo una vez; luego /cliente redirige a limpio
-            redirect_url = url_for('cliente', nombre=nombre, cantidad_comensales=cantidad_comensales)
+            redirect_url = url_for('cliente', nombre=nombre, telefono=telefono, cantidad_comensales=cantidad_comensales)
         return jsonify({'redirect_url': redirect_url})
     
     return render_template('qr_landing.html')
