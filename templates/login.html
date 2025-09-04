@@ -28,6 +28,15 @@
                       title="Por favor ingresa un correo válido (ejemplo@dominio.com)"><br>
                 <input type="password" name="password" required class="login-input" placeholder="Contraseña"><br>
             </div>
+            
+            {% with messages = get_flashed_messages() %}
+              {% if messages %}
+                {% for message in messages %}
+                  <div class="text-red-500 text-center mt-2">{{ message }}</div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+            
             <button type="submit" class="login-button">Iniciar sesión</button>
             <p class="text-center mt-4 text-sm">
               ¿No tienes una cuenta? 

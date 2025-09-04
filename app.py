@@ -919,7 +919,7 @@ def login():
         # Verificar rate limiting
         if not check_rate_limit(client_ip):
             flash('Demasiados intentos de login. Intenta de nuevo en 15 minutos.')
-            return render_template('login.html'), 429
+            return redirect(url_for('login'))
         
         email = request.form['email']
         password = request.form['password']
@@ -940,6 +940,7 @@ def login():
             return redirect(url_for('trabajador'))
         else:
             flash('Credenciales incorrectas')
+            return redirect(url_for('login'))
     
     return render_template('login.html')
 
