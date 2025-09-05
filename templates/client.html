@@ -198,6 +198,57 @@
       background: #3b82f6;
       color: white;
       padding: 1rem 2rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      z-index: 1000;
+      animation: slideDown 0.3s ease-out;
+    }
+    
+    /* Estilos para el botón de cancelar turno */
+    .cancelar-turno-container {
+      text-align: center;
+      margin: 30px auto;
+      padding: 20px;
+      max-width: 300px;
+    }
+    
+    .btn-cancelar-turno {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+      width: 100%;
+      max-width: 250px;
+    }
+    
+    .btn-cancelar-turno:hover {
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+    }
+    
+    .btn-cancelar-turno:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+    }
+    
+    .cancelar-ayuda {
+      font-size: 0.8rem;
+      color: #6b7280;
+      margin-top: 10px;
+      line-height: 1.3;
+    }
+    
+    /* Ocultar botón de cancelar cuando tiene mesa asignada */
+    .tiene-mesa #cancelar-turno-container {
+      display: none !important;
+    }
       border-radius: 0.5rem;
       box-shadow: 0 4px 12px rgba(0,0,0,0.3);
       z-index: 1000;
@@ -345,6 +396,14 @@
           <button onclick="toggleInfoPopover()" class="popover-close">Entendido</button>
         </div>
       </div>
+    </div>
+    
+    <!-- Botón para cancelar turno (solo visible mientras espera) -->
+    <div id="cancelar-turno-container" class="cancelar-turno-container">
+      <button id="btn-cancelar-turno" onclick="confirmarCancelacion()" class="btn-cancelar-turno">
+        ❌ Cancelar mi turno
+      </button>
+      <p class="cancelar-ayuda">Si tienes algún inconveniente, puedes cancelar tu lugar en la fila</p>
     </div>
   </main>
 
@@ -751,6 +810,15 @@
           document.getElementById("bienvenida").style.display = "none";
           document.getElementById("tiempo-espera-container").style.display = "none";
 
+          // Ocultar botón de cancelar turno cuando ya tiene mesa asignada
+          const cancelarContainer = document.getElementById('cancelar-turno-container');
+          if (cancelarContainer) {
+            cancelarContainer.style.display = 'none';
+          }
+          
+          // Agregar clase para indicar que tiene mesa
+          document.body.classList.add('tiene-mesa');
+
           // Iniciar cronómetro desde timestamp absoluto proporcionado por el backend
           iniciarCronometro(mesaAsignadaAtInicial);
         }
@@ -776,6 +844,62 @@
         popover.classList.add("hidden");
       }
     });
+
+    // ==================== CANCELAR TURNO ====================
+    
+    function confirmarCancelacion() {
+      const confirmar = confirm(
+        "¿Estás seguro de que quieres cancelar tu lugar en la fila?\n\n" +
+        "Esta acción no se puede deshacer y tendrás que volver a hacer fila si cambias de opinión."
+      );
+      
+      if (confirmar) {
+        cancelarTurno();
+      }
+    }
+    
+    async function cancelarTurno() {
+      try {
+        // Deshabilitar el botón para evitar clics múltiples
+        const btnCancelar = document.getElementById('btn-cancelar-turno');
+        btnCancelar.disabled = true;
+        btnCancelar.textContent = '⏳ Cancelando...';
+        
+        const response = await fetch(`/cancelar_turno/${id}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          // Mostrar mensaje de confirmación
+          alert('✅ Tu lugar en la fila ha sido cancelado exitosamente.\n\nGracias por visitarnos. ¡Esperamos verte pronto!');
+          
+          // Redirigir al landing page
+          window.location.href = '/qr_landing';
+        } else {
+          // Mostrar error
+          alert(`❌ Error al cancelar: ${data.error}`);
+          
+          // Restaurar el botón
+          btnCancelar.disabled = false;
+          btnCancelar.textContent = '❌ Cancelar mi turno';
+        }
+      } catch (error) {
+        console.error('Error al cancelar turno:', error);
+        alert('❌ Error de conexión. Por favor, intenta de nuevo.');
+        
+        // Restaurar el botón
+        const btnCancelar = document.getElementById('btn-cancelar-turno');
+        btnCancelar.disabled = false;
+        btnCancelar.textContent = '❌ Cancelar mi turno';
+      }
+    }
+
+    // ==================== FIN CANCELAR TURNO ====================
 
     // Cronómetro robusto (cálculo absoluto) similar a lógica de workers
     function iniciarCronometro(asignada_at = null){
@@ -972,6 +1096,16 @@
             console.log(`✅ Elemento ${index + 1} ocultado`);
           }
         });
+        
+        // Ocultar botón de cancelar turno cuando se asigna mesa
+        const cancelarContainer = document.getElementById('cancelar-turno-container');
+        if (cancelarContainer) {
+          cancelarContainer.style.display = 'none';
+          console.log('✅ Botón de cancelar turno ocultado');
+        }
+        
+        // Agregar clase para indicar que tiene mesa
+        document.body.classList.add('tiene-mesa');
         
         // Mostrar notificación push con debugging
         console.log('🔔 Iniciando proceso de notificación...');

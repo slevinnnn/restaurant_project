@@ -202,7 +202,7 @@ def initialize_tables():
         db.create_all()
         
         mesas_existentes = db.session.query(db.func.count(Mesa.id)).scalar() or 0
-        mesas_deseadas = 8
+        mesas_deseadas = 20
         
         if mesas_existentes < mesas_deseadas:
             for i in range(mesas_existentes, mesas_deseadas):
@@ -1112,6 +1112,44 @@ def verificar_estado_cliente(cliente_id):
     except Exception as e:
         print(f"Error verificando estado del cliente {cliente_id}: {e}")
         return jsonify({'error': 'Error interno del servidor'}), 500
+
+@app.route('/cancelar_turno/<int:cliente_id>', methods=['POST'])
+def cancelar_turno(cliente_id):
+    """Permitir que un cliente cancele su lugar en la fila"""
+    try:
+        # Verificar que el cliente_id coincida con la sesión para prevenir cancelaciones maliciosas
+        if 'cliente_id' not in session or session['cliente_id'] != cliente_id:
+            return jsonify({"success": False, "error": "No autorizado"}), 403
+        
+        cliente = db.session.get(Cliente, cliente_id)
+        if not cliente:
+            return jsonify({"success": False, "error": "Cliente no encontrado"}), 404
+        
+        # Solo permitir cancelación si el cliente NO tiene mesa asignada
+        if cliente.assigned_table:
+            return jsonify({"success": False, "error": "No puedes cancelar cuando ya tienes mesa asignada"}), 400
+        
+        # Eliminar al cliente de la base de datos
+        db.session.delete(cliente)
+        db.session.commit()
+        
+        # Limpiar la sesión
+        session.clear()
+        
+        # Notificar a todos los trabajadores que la lista de clientes cambió
+        socketio.emit('actualizar_lista_clientes')
+        socketio.emit('actualizar_cola')
+        enviar_estado_cola()
+        
+        return jsonify({
+            "success": True, 
+            "mensaje": "Tu lugar en la fila ha sido cancelado exitosamente"
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error cancelando turno: {e}")
+        return jsonify({"success": False, "error": "Error interno"}), 500
 
 if __name__ == "__main__":
     # Ejecutar migraciones automáticamente en producción
