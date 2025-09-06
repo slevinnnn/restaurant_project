@@ -1151,6 +1151,191 @@ def cancelar_turno(cliente_id):
         print(f"Error cancelando turno: {e}")
         return jsonify({"success": False, "error": "Error interno"}), 500
 
+@app.route('/admin/reiniciar_bd', methods=['GET', 'POST'])
+@login_required
+def reiniciar_base_datos_admin():
+    """Endpoint administrativo para reiniciar la base de datos"""
+    if request.method == 'GET':
+        # Mostrar página de confirmación
+        es_produccion = bool(os.environ.get('DATABASE_URL'))
+        tipo_bd = "PostgreSQL (Render)" if es_produccion else "SQLite (Local)"
+        
+        # Contar registros actuales
+        clientes_count = Cliente.query.count()
+        trabajadores_count = Trabajador.query.count()
+        uso_mesas_count = UsoMesa.query.count()
+        mesas_count = Mesa.query.count()
+        
+        stats = {
+            'tipo_bd': tipo_bd,
+            'es_produccion': es_produccion,
+            'clientes': clientes_count,
+            'trabajadores': trabajadores_count,
+            'uso_mesas': uso_mesas_count,
+            'mesas': mesas_count
+        }
+        
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Reiniciar Base de Datos</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 40px; }}
+                .warning {{ background: #fff3cd; border: 1px solid #ffeaa7; padding: 20px; border-radius: 5px; margin: 20px 0; }}
+                .danger {{ background: #f8d7da; border: 1px solid #f5c6cb; padding: 20px; border-radius: 5px; margin: 20px 0; }}
+                .info {{ background: #d1ecf1; border: 1px solid #bee5eb; padding: 20px; border-radius: 5px; margin: 20px 0; }}
+                button {{ padding: 10px 20px; margin: 10px; border: none; border-radius: 5px; cursor: pointer; }}
+                .btn-danger {{ background: #dc3545; color: white; }}
+                .btn-secondary {{ background: #6c757d; color: white; }}
+            </style>
+        </head>
+        <body>
+            <h1>🔄 Reiniciar Base de Datos</h1>
+            
+            <div class="info">
+                <h3>📊 Estado Actual:</h3>
+                <p><strong>Tipo de BD:</strong> {stats['tipo_bd']}</p>
+                <p><strong>Clientes:</strong> {stats['clientes']}</p>
+                <p><strong>Trabajadores:</strong> {stats['trabajadores']}</p>
+                <p><strong>Mesas:</strong> {stats['mesas']}</p>
+                <p><strong>Registros de uso:</strong> {stats['uso_mesas']}</p>
+            </div>
+            
+            <div class="danger">
+                <h3>⚠️ ADVERTENCIA</h3>
+                <p>Esta acción eliminará <strong>TODOS</strong> los siguientes datos:</p>
+                <ul>
+                    <li>Todos los clientes en cola</li>
+                    <li>Todos los trabajadores registrados</li>
+                    <li>Todo el historial de uso de mesas</li>
+                    <li>Reseteo del estado de todas las mesas</li>
+                </ul>
+                <p><strong>Las mesas se mantendrán pero quedarán libres.</strong></p>
+            </div>
+            
+            <div class="warning">
+                <h3>📝 Después del reinicio necesitarás:</h3>
+                <ul>
+                    <li>Registrar un nuevo trabajador en <a href="/registro">/registro</a></li>
+                    <li>Configurar las capacidades de las mesas si es necesario</li>
+                </ul>
+            </div>
+            
+            <form method="POST" onsubmit="return confirm('¿Estás COMPLETAMENTE seguro de que quieres reiniciar la base de datos? Esta acción NO se puede deshacer.');">
+                <button type="submit" class="btn-danger">🗑️ SÍ, REINICIAR BASE DE DATOS</button>
+                <a href="/trabajador"><button type="button" class="btn-secondary">❌ Cancelar</button></a>
+            </form>
+        </body>
+        </html>
+        """
+    
+    elif request.method == 'POST':
+        try:
+            # Ejecutar el reinicio
+            es_produccion = bool(os.environ.get('DATABASE_URL'))
+            
+            # Contar antes de eliminar
+            clientes_count = Cliente.query.count()
+            trabajadores_count = Trabajador.query.count()
+            uso_mesas_count = UsoMesa.query.count()
+            
+            # 1. Eliminar todos los clientes
+            Cliente.query.delete()
+            
+            # 2. Eliminar todos los trabajadores
+            Trabajador.query.delete()
+            
+            # 3. Eliminar historial de uso de mesas
+            UsoMesa.query.delete()
+            
+            # 4. Resetear estado de todas las mesas
+            mesas = Mesa.query.all()
+            for mesa in mesas:
+                mesa.is_occupied = False
+                mesa.start_time = None
+                mesa.cliente_id = None
+                mesa.llego_comensal = False
+                mesa.reservada = False
+                mesa.orden = None
+            
+            # 5. Confirmar cambios
+            db.session.commit()
+            
+            # Limpiar sesión actual (el trabajador que ejecutó el reinicio ya no existe)
+            session.clear()
+            
+            # Emitir actualizaciones
+            socketio.emit('actualizar_mesas')
+            socketio.emit('actualizar_lista_clientes')
+            
+            tipo_bd = "PostgreSQL (Render)" if es_produccion else "SQLite (Local)"
+            
+            return f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Reinicio Completado</title>
+                <style>
+                    body {{ font-family: Arial, sans-serif; margin: 40px; }}
+                    .success {{ background: #d4edda; border: 1px solid #c3e6cb; padding: 20px; border-radius: 5px; margin: 20px 0; }}
+                    .info {{ background: #d1ecf1; border: 1px solid #bee5eb; padding: 20px; border-radius: 5px; margin: 20px 0; }}
+                    button {{ padding: 10px 20px; margin: 10px; border: none; border-radius: 5px; cursor: pointer; background: #007bff; color: white; }}
+                </style>
+            </head>
+            <body>
+                <h1>✅ Base de Datos Reiniciada</h1>
+                
+                <div class="success">
+                    <h3>🎉 Reinicio completado exitosamente</h3>
+                    <p><strong>Base de datos:</strong> {tipo_bd}</p>
+                    <p><strong>Eliminados:</strong></p>
+                    <ul>
+                        <li>{clientes_count} clientes</li>
+                        <li>{trabajadores_count} trabajadores</li>
+                        <li>{uso_mesas_count} registros de uso</li>
+                    </ul>
+                    <p><strong>Reseteadas:</strong> {len(mesas)} mesas</p>
+                </div>
+                
+                <div class="info">
+                    <h3>📝 Próximos pasos:</h3>
+                    <ol>
+                        <li>Registrar un nuevo trabajador</li>
+                        <li>Configurar capacidades de mesas si es necesario</li>
+                        <li>¡Listo para usar!</li>
+                    </ol>
+                </div>
+                
+                <a href="/registro"><button>👥 Registrar Trabajador</button></a>
+                <a href="/"><button>🏠 Ir al Inicio</button></a>
+            </body>
+            </html>
+            """
+            
+        except Exception as e:
+            db.session.rollback()
+            return f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Error en Reinicio</title>
+                <style>
+                    body {{ font-family: Arial, sans-serif; margin: 40px; }}
+                    .danger {{ background: #f8d7da; border: 1px solid #f5c6cb; padding: 20px; border-radius: 5px; margin: 20px 0; }}
+                </style>
+            </head>
+            <body>
+                <h1>❌ Error en el Reinicio</h1>
+                <div class="danger">
+                    <p><strong>Error:</strong> {str(e)}</p>
+                    <p>Intenta nuevamente o contacta al administrador.</p>
+                </div>
+                <a href="/admin/reiniciar_bd"><button>🔄 Intentar de nuevo</button></a>
+            </body>
+            </html>
+            """
+
 if __name__ == "__main__":
     # Ejecutar migraciones automáticamente en producción
     run_migrations()
