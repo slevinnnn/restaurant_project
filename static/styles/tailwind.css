@@ -705,9 +705,33 @@ main {
     border-radius: 10px;
     font-weight: bold;
   }
+    .mesa[data-capacidad="3"] .mesa-header::after {
+    content: "👥 3p";
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #3498db;
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: bold;
+  }
 
   .mesa[data-capacidad="4"] .mesa-header::after {
     content: "👥 4p";
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #27ae60;
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: bold;
+  }
+  .mesa[data-capacidad="5"] .mesa-header::after {
+    content: "👥 5p";
     position: absolute;
     top: -5px;
     right: -5px;

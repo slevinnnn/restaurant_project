@@ -263,7 +263,6 @@
       .then(res => res.json())
       .then(data => {
         if (data.success) {
-          alert(`Capacidad cambiada exitosamente a ${data.nueva_capacidad} personas`);
           // Cerrar el popover
           document.getElementById('popover-overlay').click();
         } else {
