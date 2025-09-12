@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Script para limpiar los datos de la base de datos manteniendo las 20 mesas
+Script para limpiar los datos de la base de datos manteniendo las 26 mesas
 """
 
 import os

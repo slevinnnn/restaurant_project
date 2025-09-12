@@ -202,7 +202,7 @@ def initialize_tables():
         db.create_all()
         
         mesas_existentes = db.session.query(db.func.count(Mesa.id)).scalar() or 0
-        mesas_deseadas = 20
+        mesas_deseadas = 26
         
         if mesas_existentes < mesas_deseadas:
             for i in range(mesas_existentes, mesas_deseadas):
