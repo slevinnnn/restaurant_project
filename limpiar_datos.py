@@ -44,4 +44,16 @@ def limpiar_datos():
             return False
 
 if __name__ == '__main__':
-    limpiar_datos()
+    print("🧹 SCRIPT DE LIMPIEZA DE DATOS")
+    print("⚠️  PELIGRO: Esto eliminará TODOS los clientes")
+    print("⚠️  PELIGRO: Esto reseteará TODAS las mesas")  
+    print("⚠️  Esta acción NO se puede deshacer")
+    print()
+    respuesta = input("¿Estás COMPLETAMENTE seguro de que quieres continuar? (escribe 'SÍ ESTOY SEGURO' para confirmar): ")
+    
+    if respuesta.strip().upper() == "SÍ ESTOY SEGURO":
+        print("Procediendo con la limpieza...")
+        limpiar_datos()
+    else:
+        print("❌ Limpieza cancelada por el usuario. Ningún dato fue modificado.")
+        print("Para ejecutar la limpieza, debes escribir exactamente: SÍ ESTOY SEGURO")

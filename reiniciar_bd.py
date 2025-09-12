@@ -75,6 +75,16 @@ def reiniciar_base_datos():
             return False
 
 if __name__ == '__main__':
-    print("🔄 Reiniciando base de datos...")
-    print("⚠️  Esto eliminará TODOS los clientes y trabajadores")
-    reiniciar_base_datos()
+    print("🔄 SCRIPT DE REINICIO DE BASE DE DATOS")
+    print("⚠️  PELIGRO: Esto eliminará TODOS los clientes y trabajadores")
+    print("⚠️  PELIGRO: Esto reseteará TODAS las mesas")
+    print("⚠️  Esta acción NO se puede deshacer")
+    print()
+    respuesta = input("¿Estás COMPLETAMENTE seguro de que quieres continuar? (escribe 'SÍ ESTOY SEGURO' para confirmar): ")
+    
+    if respuesta.strip().upper() == "SÍ ESTOY SEGURO":
+        print("Procediendo con el reinicio...")
+        reiniciar_base_datos()
+    else:
+        print("❌ Reinicio cancelado por el usuario. Ningún dato fue modificado.")
+        print("Para ejecutar el reinicio, debes escribir exactamente: SÍ ESTOY SEGURO")
