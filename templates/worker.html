@@ -664,8 +664,9 @@
             ✅ Reservar
           </button>
           <button onclick="accionMesa(${mesaId}, '${estado}')" class="w-full bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition-colors border border-green-200">
-            👥 Asignar
+            👥 Ocupar
           </button>
+          <button onclick=\"ocuparDosOMas(${mesaId})\" class=\"w-full bg-teal-50 hover:bg-teal-100 text-teal-700 rounded-lg transition-colors border border-teal-200\">\n            👥 Ocupar 2+\n          </button>
           <button onclick="cambiarCapacidad(${mesaId})" class="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg transition-colors border border-purple-200">
             👥 Cambiar Capacidad
           </button>
@@ -783,6 +784,76 @@
           activePopover = null;
         }, 300);
       }
+    }
+
+    // ---- Ocupación de múltiples mesas desde estado libre ----
+    function ocuparDosOMas(mesaPrincipalId) {
+      // Construir una lista de mesas libres para seleccionar adicionales
+      const todasMesas = Array.from(document.querySelectorAll('.mesa'));
+      const libres = todasMesas.filter(m => m.dataset.estado === 'libre' && parseInt(m.dataset.mesaId) !== mesaPrincipalId);
+
+      if (libres.length === 0) {
+        // Nada para elegir, simplemente ocupar la mesa principal como fallback
+        accionMesa(mesaPrincipalId, 'libre');
+        return;
+      }
+
+      // Crear un modal simple de selección
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10000;
+        display: flex; align-items: center; justify-content: center;`;
+      const box = document.createElement('div');
+      box.style.cssText = `background: #fff; border-radius: 12px; width: 90%; max-width: 480px; padding: 16px;`;
+
+      let opciones = libres.map(m => {
+        const id = m.dataset.mesaId;
+        const cap = m.getAttribute('data-capacidad');
+        return `<label style="display:flex;align-items:center;gap:8px;margin:6px 0;">
+                  <input type="checkbox" value="${id}" />
+                  <span>Mesa #${id} (cap. ${cap})</span>
+                </label>`;
+      }).join('');
+
+      box.innerHTML = `
+        <h3 style="font-weight:700;margin-bottom:8px;">Selecciona mesas adicionales</h3>
+        <div style="max-height:260px;overflow:auto; margin: 8px 0;">
+          ${opciones}
+        </div>
+        <div style="display:flex; gap:8px; justify-content:flex-end; margin-top: 12px;">
+          <button id="cancelar-ocupar-2" class="bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-lg">Cancelar</button>
+          <button id="confirmar-ocupar-2" class="bg-teal-600 hover:bg-teal-700 text-white py-2 px-4 rounded-lg">Confirmar</button>
+        </div>`;
+
+      modal.appendChild(box);
+      document.body.appendChild(modal);
+
+      document.getElementById('cancelar-ocupar-2').onclick = () => {
+        document.body.removeChild(modal);
+      };
+      document.getElementById('confirmar-ocupar-2').onclick = () => {
+        const seleccionadas = Array.from(box.querySelectorAll('input[type="checkbox"]:checked')).map(i => parseInt(i.value));
+        // Hacer POST al backend
+        fetch('/ocupar_multiples_mesas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mesa_principal: mesaPrincipalId, mesas_adicionales: seleccionadas })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            // Cerrar todo y refrescar UI (socket actualizará)
+            try { document.body.removeChild(modal); } catch {}
+            hidePopover();
+          } else {
+            alert(data.error || 'No se pudo ocupar múltiples mesas');
+          }
+        })
+        .catch(err => {
+          console.error('Error ocupar_multiples_mesas:', err);
+          alert('Error de red al ocupar múltiples mesas');
+        });
+      };
     }
 
     // Función para inicializar los event listeners de las mesas

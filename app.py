@@ -624,6 +624,72 @@ def ocupar_mesa(mesa_id):
         return jsonify({"success": True})
     return jsonify({"success": False})
 
+@app.route('/ocupar_multiples_mesas', methods=['POST'])
+@worker_required
+def ocupar_multiples_mesas():
+    """Ocupa varias mesas libres como un grupo manual (sin cliente en cola).
+    Espera JSON: { "mesa_principal": int, "mesas_adicionales": [int, ...] }
+    Crea un cliente 'manual' efímero para linkear las mesas bajo un mismo cliente_id,
+    de modo que liberar y confirmar llegada propaguen entre las mesas del grupo.
+    """
+    try:
+        data = request.get_json() or {}
+        mesa_principal_id = data.get('mesa_principal')
+        adicionales = data.get('mesas_adicionales', []) or []
+
+        if not mesa_principal_id or not isinstance(adicionales, list):
+            return jsonify({"success": False, "error": "Datos inválidos"}), 400
+
+        # Obtener mesas y validar que estén libres
+        todas_ids = [mesa_principal_id] + [mid for mid in adicionales if mid != mesa_principal_id]
+        mesas = Mesa.query.filter(Mesa.id.in_(todas_ids)).with_for_update().all()
+        mesa_por_id = {m.id: m for m in mesas}
+        faltantes = [mid for mid in todas_ids if mid not in mesa_por_id]
+        if faltantes:
+            return jsonify({"success": False, "error": f"Mesas inexistentes: {faltantes}"}), 404
+
+        # Validar estado libre
+        no_libres = [m.id for m in mesas if m.is_occupied or m.reservada]
+        if no_libres:
+            return jsonify({"success": False, "error": f"Mesas no disponibles: {no_libres}"}), 409
+
+        # Crear un 'cliente' manual para agrupar
+        cliente_manual = Cliente(
+            nombre='Manual',
+            telefono='manual',
+            cantidad_comensales=sum(m.capacidad for m in mesas),
+            joined_at=get_chile_time(),
+            assigned_table=mesa_principal_id,  # marcar como ya asignado para que no aparezca en la cola
+            atendido_at=get_chile_time(),
+            mesa_asignada_at=get_chile_time(),
+            sid=None
+        )
+        db.session.add(cliente_manual)
+        db.session.flush()  # para obtener cliente_manual.id
+
+        # Ocupar todas bajo el mismo cliente_id
+        ahora = get_chile_time()
+        for m in mesas:
+            m.is_occupied = True
+            m.start_time = ahora
+            m.cliente_id = cliente_manual.id
+            m.llego_comensal = False
+            m.reservada = False
+
+        db.session.commit()
+
+        socketio.emit('actualizar_mesas')
+        return jsonify({
+            "success": True,
+            "mesa_principal": mesa_principal_id,
+            "mesas_totales": todas_ids,
+            "cliente_manual_id": cliente_manual.id
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error en ocupar_multiples_mesas: {e}")
+        return jsonify({"success": False, "error": f"Error interno: {str(e)}"}), 500
+
 @app.route('/reservar_mesa/<int:mesa_id>', methods=['POST'])
 @worker_required
 def reservar_mesa(mesa_id):
