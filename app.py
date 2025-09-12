@@ -338,11 +338,16 @@ def liberar_mesa(mesa_id):
         
         # Obtener el cliente_id antes de limpiar la mesa
         cliente_id = mesa.cliente_id
-        
-        # Buscar TODAS las mesas asignadas al mismo cliente
-        mesas_del_cliente = Mesa.query.filter_by(cliente_id=cliente_id, is_occupied=True).all()
-        
-        print(f"Liberando mesa {mesa_id} del cliente {cliente_id}. Total mesas del cliente: {len(mesas_del_cliente)}")
+
+        # IMPORTANTE: Si la mesa fue ocupada manualmente, cliente_id será None.
+        # En ese caso, NO debemos liberar todas las mesas con cliente_id NULL, solo esta mesa.
+        if cliente_id is None:
+            mesas_del_cliente = [mesa]
+            print(f"Liberando SOLO la mesa {mesa_id} (ocupación manual, cliente_id=None)")
+        else:
+            # Buscar TODAS las mesas asignadas al mismo cliente (grupo)
+            mesas_del_cliente = Mesa.query.filter_by(cliente_id=cliente_id, is_occupied=True).all()
+            print(f"Liberando mesa {mesa_id} del cliente {cliente_id}. Total mesas del cliente: {len(mesas_del_cliente)}")
         
         # Liberar TODAS las mesas del cliente
         for mesa_cliente in mesas_del_cliente:
