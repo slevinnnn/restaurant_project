@@ -778,7 +778,9 @@ main {
 /* Mobile: Sin indicador ::after, se mostrará inline en el HTML */
 @media (max-width: 640px) {
   .mesa[data-capacidad="2"] .mesa-header::after,
+  .mesa[data-capacidad="3"] .mesa-header::after,
   .mesa[data-capacidad="4"] .mesa-header::after,
+  .mesa[data-capacidad="5"] .mesa-header::after,
   .mesa[data-capacidad="6"] .mesa-header::after,
   .mesa[data-capacidad="8"] .mesa-header::after {
     display: none;
@@ -797,7 +799,9 @@ main {
   }
   
   .capacidad-mobile.cap-2 { background: #3498db; }
+  .capacidad-mobile.cap-3 { background: #3498db; }  
   .capacidad-mobile.cap-4 { background: #27ae60; }
+  .capacidad-mobile.cap-5 { background: #27ae60; }
   .capacidad-mobile.cap-6 { background: #f39c12; }
   .capacidad-mobile.cap-8 { background: #e74c3c; }
 }

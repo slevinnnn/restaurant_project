@@ -618,7 +618,8 @@ def ocupar_mesa(mesa_id):
         mesa.is_occupied = True
         mesa.start_time = get_chile_time()
         mesa.cliente_id = None
-        mesa.llego_comensal = False
+        # Mesa libre ocupada manualmente: el comensal ya está presente
+        mesa.llego_comensal = True
         db.session.commit()
         socketio.emit('actualizar_mesas')
         return jsonify({"success": True})
@@ -673,7 +674,8 @@ def ocupar_multiples_mesas():
             m.is_occupied = True
             m.start_time = ahora
             m.cliente_id = cliente_manual.id
-            m.llego_comensal = False
+            # Ocupación manual desde estado libre: ya están presentes
+            m.llego_comensal = True
             m.reservada = False
 
         db.session.commit()
