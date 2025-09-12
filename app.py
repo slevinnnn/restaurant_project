@@ -202,7 +202,7 @@ def initialize_tables():
         db.create_all()
         
         mesas_existentes = db.session.query(db.func.count(Mesa.id)).scalar() or 0
-        mesas_deseadas = 20
+        mesas_deseadas = 26
         
         if mesas_existentes < mesas_deseadas:
             for i in range(mesas_existentes, mesas_deseadas):
@@ -1151,9 +1151,10 @@ def cancelar_turno(cliente_id):
         print(f"Error cancelando turno: {e}")
         return jsonify({"success": False, "error": "Error interno"}), 500
 
-@app.route('/admin/reiniciar_bd', methods=['GET', 'POST'])
-@login_required
-def reiniciar_base_datos_admin():
+# FUNCIÓN DESHABILITADA POR SEGURIDAD - CAUSABA RESETEO ACCIDENTAL DE MESAS EN PRODUCCIÓN
+# @app.route('/admin/reiniciar_bd', methods=['GET', 'POST'])
+# @login_required
+# def reiniciar_base_datos_admin():
     """Endpoint administrativo para reiniciar la base de datos"""
     if request.method == 'GET':
         # Mostrar página de confirmación
