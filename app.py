@@ -241,12 +241,19 @@ def cliente(nombre=None, cantidad_comensales=None, telefono=None):
         # Obtener el cliente existente
         cliente_existente = Cliente.query.get(session['cliente_id'])
         if cliente_existente:
+            llegada_cola_iso = cliente_existente.joined_at.isoformat() if cliente_existente.joined_at else None
+            try:
+                llegada_cola_fmt = convert_to_chile_time(cliente_existente.joined_at).strftime('%d/%m %H:%M') if cliente_existente.joined_at else None
+            except Exception:
+                llegada_cola_fmt = cliente_existente.joined_at.strftime('%d/%m %H:%M') if cliente_existente.joined_at else None
             return render_template(
                 'client.html',
                 numero=cliente_existente.id,
                 nombre=cliente_existente.nombre,
                 mesa_asignada_at=cliente_existente.mesa_asignada_at.isoformat() if cliente_existente.mesa_asignada_at else None,
-                mesa_asignada=cliente_existente.assigned_table
+                mesa_asignada=cliente_existente.assigned_table,
+                llegada_cola=llegada_cola_iso,
+                llegada_cola_str=llegada_cola_fmt
             )
     
     # Si no hay sesión o el cliente no existe, crear uno nuevo

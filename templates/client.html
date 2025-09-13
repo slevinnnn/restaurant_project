@@ -358,8 +358,12 @@
   <main style="padding-top: 20vh;">
     <div class="container-card">
       <p class="msj-bienvenida" id="bienvenida">Bienvenid@ {% if nombre %}{{ nombre }}{% endif %}</p>
-      <p class="msj-actualmente" id="actualmente">Actualmente atendiendo al número: <strong id="atendiendo"></strong></p>
-      <p class="msj-tu-numero" id="tu-numero">Tu número en la fila es: <strong>{{ numero }}</strong></p>
+  <p class="msj-actualmente" id="actualmente">Actualmente atendiendo al número: <strong id="atendiendo"></strong></p>
+
+    <p class="msj-tu-numero" id="tu-numero">Tu número en la fila es: <strong>{{ numero }}</strong></p>
+  {% if llegada_cola %}
+    <p class="msj-estado" id="llegada-cola">Hora de llegada:  <span id="hora-llegada"></span></p>
+  {% endif %}
       
   <p class="msj-estado" id="estado" style="text-align:center;">Esperando tu turno...</p>
     </div>
@@ -412,9 +416,25 @@
   const id = {{ numero|tojson }};
   const mesaAsignadaInicial = {{ mesa_asignada|tojson }};
   const mesaAsignadaAtInicial = {{ mesa_asignada_at|tojson }};
+  const llegadaColaISO = {{ llegada_cola|tojson }};
   const socket = io();
   let cronometroInterval = null;
   let cronometroAsignacion = null; // Date del momento de asignación para cálculo absoluto
+  
+  // Mostrar solo la hora de llegada en formato HH:MM (sin día/mes)
+  function mostrarHoraLlegada() {
+    try {
+      if (!llegadaColaISO) return;
+      const d = new Date(llegadaColaISO);
+      if (isNaN(d.getTime())) return;
+      const hh = d.getHours().toString().padStart(2,'0');
+      const mm = d.getMinutes().toString().padStart(2,'0');
+      const el = document.getElementById('hora-llegada');
+      if (el) el.textContent = `${hh}:${mm}`;
+    } catch (e) {
+      console.warn('No se pudo formatear hora de llegada:', e);
+    }
+  }
 
     // ==================== SISTEMA DE NOTIFICACIONES PUSH ====================
     
@@ -679,6 +699,8 @@
 
     // Inicializar notificaciones al cargar la página
     window.addEventListener('load', async () => {
+      // Mostrar la hora de llegada de inmediato
+      mostrarHoraLlegada();
       if ('serviceWorker' in navigator && 'Notification' in window) {
         await registrarServiceWorker();
         
@@ -984,6 +1006,8 @@
       socket.emit("registrar_cliente", { id: id });
       // Obtener tiempo de espera promedio al conectarse
       actualizarTiempoEsperaPromedio();
+      // Mostrar hora de llegada en HH:MM
+      mostrarHoraLlegada();
     });
 
     socket.on("disconnect", (reason) => {
