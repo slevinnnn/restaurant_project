@@ -241,6 +241,17 @@ def cliente(nombre=None, cantidad_comensales=None, telefono=None):
         # Obtener el cliente existente
         cliente_existente = Cliente.query.get(session['cliente_id'])
         if cliente_existente:
+            # Si ya tiene mesa asignada y pasaron > 10 minutos desde la asignación, cerrar sesión automáticamente
+            try:
+                if cliente_existente.mesa_asignada_at:
+                    ahora = get_chile_time()
+                    asignada = convert_to_chile_time(cliente_existente.mesa_asignada_at)
+                    if (ahora - asignada) > timedelta(minutes=10):
+                        session.pop('cliente_id', None)
+                        return redirect(url_for('qr_landing'))
+            except Exception:
+                # Si falla cálculo de tiempo, continuar flujo normal
+                pass
             llegada_cola_iso = cliente_existente.joined_at.isoformat() if cliente_existente.joined_at else None
             try:
                 llegada_cola_fmt = convert_to_chile_time(cliente_existente.joined_at).strftime('%d/%m %H:%M') if cliente_existente.joined_at else None
@@ -1109,6 +1120,13 @@ def confirmar_llegada(mesa_id):
         
         # Hacer commit
         db.session.commit()
+
+        # Si hay cliente asociado, pedir al cliente que cierre su sesión (para permitir reuso del teléfono)
+        cliente_id = mesa.cliente_id
+        if cliente_id:
+            cliente = db.session.get(Cliente, cliente_id)
+            if cliente and cliente.sid:
+                socketio.emit('cerrar_sesion_cliente', {"motivo": "llego"}, to=cliente.sid)
         
         # Emitir actualizaciones después del commit exitoso
         socketio.emit('actualizar_mesas')
@@ -1229,6 +1247,16 @@ def cancelar_turno(cliente_id):
     except Exception as e:
         db.session.rollback()
         print(f"Error cancelando turno: {e}")
+        return jsonify({"success": False, "error": "Error interno"}), 500
+
+@app.route('/logout_cliente', methods=['POST'])
+def logout_cliente():
+    """Cerrar solo la sesión del cliente (no afecta sesión de trabajador)."""
+    try:
+        session.pop('cliente_id', None)
+        return jsonify({"success": True})
+    except Exception as e:
+        print(f"Error en logout_cliente: {e}")
         return jsonify({"success": False, "error": "Error interno"}), 500
 
 # FUNCIÓN DESHABILITADA POR SEGURIDAD - CAUSABA RESETEO ACCIDENTAL DE MESAS EN PRODUCCIÓN

@@ -424,6 +424,12 @@
   // Mostrar solo la hora de llegada en formato HH:MM (sin día/mes)
   function mostrarHoraLlegada() {
     try {
+      // Si ya hay mesa asignada, no mostrar la hora de llegada
+      if (mesaAsignadaInicial) {
+        const cont = document.getElementById('llegada-cola');
+        if (cont) cont.style.display = 'none';
+        return;
+      }
       if (!llegadaColaISO) return;
       const d = new Date(llegadaColaISO);
       if (isNaN(d.getTime())) return;
@@ -433,6 +439,23 @@
       if (el) el.textContent = `${hh}:${mm}`;
     } catch (e) {
       console.warn('No se pudo formatear hora de llegada:', e);
+    }
+  }
+
+  function ocultarHoraLlegada() {
+    const cont = document.getElementById('llegada-cola');
+    if (cont) cont.style.display = 'none';
+  }
+
+  // ======== Cierre de sesión del cliente ========
+  async function cerrarSesionCliente(motivo = '') {
+    try {
+      await fetch('/logout_cliente', { method: 'POST' });
+    } catch (e) {
+      console.warn('No se pudo cerrar sesión por fetch, redirigiendo igual:', e);
+    } finally {
+      // Garantizar que el teléfono pueda reutilizar el QR
+      window.location.href = '/qr_landing';
     }
   }
 
@@ -786,6 +809,8 @@
                     document.getElementById("tu-numero").style.display = "none";
                     document.getElementById("bienvenida").style.display = "none";
                     document.getElementById("tiempo-espera-container").style.display = "none";
+                    const llegadaCont = document.getElementById("llegada-cola");
+                    if (llegadaCont) llegadaCont.style.display = 'none';
                   }
                 })
                 .catch(error => {
@@ -831,6 +856,8 @@
           document.getElementById("tu-numero").style.display = "none";
           document.getElementById("bienvenida").style.display = "none";
           document.getElementById("tiempo-espera-container").style.display = "none";
+          const llegadaCont2 = document.getElementById('llegada-cola');
+          if (llegadaCont2) llegadaCont2.style.display = 'none';
 
           // Ocultar botón de cancelar turno cuando ya tiene mesa asignada
           const cancelarContainer = document.getElementById('cancelar-turno-container');
@@ -968,6 +995,8 @@
           disp.textContent = '¡Tiempo agotado!';
           document.title = '⏰ ¡Tiempo agotado! - Restaurante Alleria';
           clearInterval(window.cronometroInterval);
+          // Al expirar el tiempo, cerrar la sesión del cliente para permitir reutilizar el QR
+          cerrarSesionCliente('timeout');
         }
       }
       tick();
@@ -1028,6 +1057,12 @@
     socket.on("connect_error", (error) => {
       console.error('❌ Error de conexión del socket:', error);
       isConnected = false;
+    });
+
+    // El mesero confirmó 'Llegó': cerrar la sesión del cliente de este dispositivo
+    socket.on('cerrar_sesion_cliente', (data) => {
+      console.log('🔒 Solicitud de cierre de sesión recibida del servidor:', data);
+      cerrarSesionCliente(data && data.motivo ? data.motivo : 'llego');
     });
 
     // Actualizar tiempo de espera cada 30 segundos
@@ -1097,6 +1132,7 @@
         const tuNumeroElement = document.getElementById("tu-numero");
         const bienvenidaElement = document.getElementById("bienvenida");
         const tiempoEsperaElement = document.getElementById("tiempo-espera-container");
+  const llegadaElement = document.getElementById("llegada-cola");
         
         console.log('🔍 Elementos encontrados:', {
           estado: !!estadoElement,
@@ -1114,7 +1150,7 @@
         }
         
         // Ocultar elementos no necesarios
-        [actualmenteElement, atendiendoElement, tuNumeroElement, bienvenidaElement, tiempoEsperaElement].forEach((el, index) => {
+        [actualmenteElement, atendiendoElement, tuNumeroElement, bienvenidaElement, tiempoEsperaElement, llegadaElement].forEach((el, index) => {
           if (el) {
             el.style.display = "none";
             console.log(`✅ Elemento ${index + 1} ocultado`);
