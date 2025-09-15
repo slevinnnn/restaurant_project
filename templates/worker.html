@@ -619,7 +619,7 @@
         if (mesaElement && mesaElement.classList.contains('recien-asignada')) {
           const countdownElement = document.getElementById(`countdown-${mesaId}`);
           if (countdownElement) {
-            const segundosRestantes = 600 - segundos; // 10 minutos = 600 segundos
+            const segundosRestantes = 300 - segundos; // 5 minutos = 300 segundos
             if (segundosRestantes > 0) {
               const minutos = Math.floor(segundosRestantes / 60);
               const segs = segundosRestantes % 60;
@@ -627,8 +627,8 @@
             }
           }
 
-          // Cambiar de recién asignada a ocupada después de 10 minutos
-          const tiempo_espera = 600;
+            // Cambiar de recién asignada a ocupada después de 5 minutos
+            const tiempo_espera = 300;
           if (segundos >= tiempo_espera) {
             llegoComensal(mesaId);
           }

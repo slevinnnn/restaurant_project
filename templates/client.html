@@ -376,12 +376,12 @@
       </button>
     </div>
     
-    <!-- Cronómetro de 10 minutos (oculto inicialmente) -->
+  <!-- Cronómetro de 5 minutos (oculto inicialmente) -->
     <div id="cronometro-container" class="cronometro-container hidden">
       <div class="cronometro-content">
         <h3 class="cronometro-title">⏰ Tiempo para llegar</h3>
         <div class="cronometro-display" id="cronometro-display">10:00</div>
-        <p class="cronometro-message">¡Tienes 10 minutos para llegar a tu mesa!</p>
+  <p class="cronometro-message">¡Tienes 5 minutos para llegar a tu mesa!</p>
       </div>
     </div>
     
@@ -526,7 +526,7 @@
       if (Notification.permission === 'granted') {
         try {
           const notificacion = new Notification('🎉 ¡Es tu turno!', {
-            body: `Tu mesa ${mesa} está lista. Tienes 10 minutos para llegar.`,
+            body: `Tu mesa ${mesa} está lista. Tienes 5 minutos para llegar.`,
             icon: '/static/images/logo-alleria.png',
             badge: '/static/images/logo-alleria.png',
             vibrate: [500, 200, 500, 200, 500, 200, 500], // Vibración más intensa y larga
@@ -562,7 +562,7 @@
           navigator.serviceWorker.controller.postMessage({
             type: 'SHOW_NOTIFICATION',
             title: '🎉 ¡Es tu turno!',
-            body: `Tu mesa ${mesa} está lista. Tienes 10 minutos para llegar.`,
+            body: `Tu mesa ${mesa} está lista. Tienes 5 minutos para llegar.`,
             mesa: mesa
           });
           console.log('✅ Mensaje enviado al Service Worker');
@@ -689,7 +689,7 @@
             Tu mesa <strong>${mesa}</strong> está lista
           </p>
           <p style="color: #666; margin-bottom: 2rem;">
-            Tienes 10 minutos para llegar
+            Tienes 5 minutos para llegar
           </p>
           <button onclick="document.getElementById('alerta-turno').remove()" 
                   style="
@@ -968,7 +968,7 @@
       cont.style.visibility='visible';
       // limpiar intervalo anterior
       if(window.cronometroInterval){ clearInterval(window.cronometroInterval); }
-      const TOTAL = 600; // 10 min
+  const TOTAL = 300; // 5 min
       function tick(){
         if(!cronometroAsignacion){ clearInterval(window.cronometroInterval); return; }
         const ahora = new Date();

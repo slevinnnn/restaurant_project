@@ -241,12 +241,12 @@ def cliente(nombre=None, cantidad_comensales=None, telefono=None):
         # Obtener el cliente existente
         cliente_existente = Cliente.query.get(session['cliente_id'])
         if cliente_existente:
-            # Si ya tiene mesa asignada y pasaron > 10 minutos desde la asignación, cerrar sesión automáticamente
+            # Si ya tiene mesa asignada y pasaron > 5 minutos desde la asignación, cerrar sesión automáticamente
             try:
                 if cliente_existente.mesa_asignada_at:
                     ahora = get_chile_time()
                     asignada = convert_to_chile_time(cliente_existente.mesa_asignada_at)
-                    if (ahora - asignada) > timedelta(minutes=10):
+                    if (ahora - asignada) > timedelta(minutes=5):
                         session.pop('cliente_id', None)
                         return redirect(url_for('qr_landing'))
             except Exception:
