@@ -54,8 +54,8 @@
               <span class="waiting-time" data-joined="{{ c.joined_at.isoformat() }}">Calculando...</span>
             </td>
             <td class="text-xs sm:text-sm">
-              {% if loop.index == 1 %}
-                <!-- Solo el primer cliente puede ser asignado -->
+              {% if loop.index <= 3 %}
+                <!-- Solo los primeros 3 clientes pueden ser asignados -->
                 <button onclick="iniciarAsignacionManual({{ c.id }}, '{{ c.nombre }}', {{ c.cantidad_comensales }})" 
                         class="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs">
                   🏠 Asignar
@@ -301,9 +301,9 @@
               data.forEach((c, index) => {
                 const joinedDate = new Date(c.joined_at);
                 
-                // Determinar si es el primer cliente en la fila
-                const isFirstInLine = index === 0;
-                const actionCell = isFirstInLine 
+                // Permitir asignar manualmente a los primeros 3 clientes en la fila
+                const isTopThree = index < 3;
+                const actionCell = isTopThree
                   ? `<button onclick="iniciarAsignacionManual(${c.id}, '${c.nombre}', ${c.cantidad_comensales})" 
                             class="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs">
                       🏠 Asignar
