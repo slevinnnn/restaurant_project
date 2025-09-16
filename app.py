@@ -87,32 +87,44 @@ def record_login_attempt(ip_address):
     login_attempts[ip_address].append(get_chile_time())
 
 def calcular_tiempo_espera_promedio():
-    """Calcula el tiempo de espera promedio basado en los últimos 6 clientes atendidos"""
+    """Calcula el TIEMPO MÍNIMO de espera entre los últimos 6 clientes atendidos.
+    Mantiene el mismo contrato del endpoint (segundos), pero ahora retorna el mínimo.
+    Si hay menos de 3 clientes con datos, retorna 15 minutos por defecto.
+    Aplica límites de 2 a 60 minutos para evitar valores extremos.
+    """
     try:
-        # Obtener los últimos 6 clientes que fueron atendidos (tienen atendido_at)
-        clientes_recientes = Cliente.query.filter(
-            Cliente.atendido_at.isnot(None)
-        ).order_by(Cliente.atendido_at.desc()).limit(6).all()
-        
-        if len(clientes_recientes) < 3:  # Necesitamos al menos 3 clientes para un promedio confiable
-            return 15 * 60  # Retornar 15 minutos por defecto en segundos
-        
+        clientes_recientes = (
+            Cliente.query
+            .filter(Cliente.atendido_at.isnot(None))
+            .order_by(Cliente.atendido_at.desc())
+            .limit(6)
+            .all()
+        )
+
+        if len(clientes_recientes) < 3:
+            return 15 * 60
+
         tiempos_espera = []
         for cliente in clientes_recientes:
             if cliente.joined_at and cliente.atendido_at:
-                tiempo_espera = (cliente.atendido_at - cliente.joined_at).total_seconds()
-                tiempos_espera.append(tiempo_espera)
-        
-        if tiempos_espera:
-            promedio = sum(tiempos_espera) / len(tiempos_espera)
-            # Limitar el tiempo máximo a 60 minutos y mínimo a 2 minutos
-            return max(120, min(3600, promedio))  # Entre 2 y 60 minutos
-        else:
-            return 15 * 60  # 15 minutos por defecto
-            
+                try:
+                    inicio = convert_to_chile_time(cliente.joined_at)
+                    fin = convert_to_chile_time(cliente.atendido_at)
+                    diff = (fin - inicio).total_seconds()
+                    if diff >= 0:
+                        tiempos_espera.append(diff)
+                except Exception:
+                    continue
+
+        if not tiempos_espera:
+            return 15 * 60
+
+        minimo = min(tiempos_espera)
+        return max(120, min(3600, minimo))
+
     except Exception as e:
-        print(f"Error calculando tiempo de espera promedio: {e}")
-        return 15 * 60  # 15 minutos por defecto
+        print(f"Error calculando tiempo de espera (mínimo): {e}")
+        return 15 * 60
 
 def datetime_to_js_timestamp(dt):
     """Convierte un datetime a timestamp compatible con JavaScript"""
