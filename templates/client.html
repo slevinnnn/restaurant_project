@@ -391,7 +391,7 @@
 
       </div>
 
-      <div class="tiempo-espera-promedio">
+      <div class="tiempo-espera-promedio" id="menu-card">
         <p class="msj-menu">Consulta nuestro menú <span>
             <!-- Enlace al Menú -->
           <div class="menu-link-wrap">
@@ -481,6 +481,18 @@
   const socket = io();
   let cronometroInterval = null;
   let cronometroAsignacion = null; // Date del momento de asignación para cálculo absoluto
+  
+  // Si ya viene mesa asignada al cargar, ocultar menú y botón de ordenar
+  (function ocultarMenuSiTieneMesaInicial(){
+    try {
+      if (mesaAsignadaInicial) {
+        const menuCard = document.getElementById('menu-card');
+        if (menuCard) menuCard.style.display = 'none';
+        const modal = document.getElementById('modal-orden');
+        if (modal) { modal.classList.add('hidden'); modal.style.display = 'none'; }
+      }
+    } catch (e) { /* noop */ }
+  })();
   
   // Mostrar solo la hora de llegada en formato HH:MM (sin día/mes)
   function mostrarHoraLlegada() {
@@ -1290,13 +1302,20 @@
           console.log('✅ Estado actualizado');
         }
         
-        // Ocultar elementos no necesarios
-        [actualmenteElement, atendiendoElement, tuNumeroElement, bienvenidaElement, tiempoEsperaElement, llegadaElement].forEach((el, index) => {
+        // Ocultar elementos no necesarios, incluyendo la card del menú
+        const menuCard = document.getElementById('menu-card');
+        [actualmenteElement, atendiendoElement, tuNumeroElement, bienvenidaElement, tiempoEsperaElement, llegadaElement, menuCard].forEach((el, index) => {
           if (el) {
             el.style.display = "none";
             console.log(`✅ Elemento ${index + 1} ocultado`);
           }
         });
+
+        // Cerrar el modal de orden si estuviera abierto
+        try {
+          const modal = document.getElementById('modal-orden');
+          if (modal) { modal.classList.add('hidden'); modal.style.display = 'none'; }
+        } catch (e) {}
         
         // Ocultar botón de cancelar turno cuando se asigna mesa
         const cancelarContainer = document.getElementById('cancelar-turno-container');
