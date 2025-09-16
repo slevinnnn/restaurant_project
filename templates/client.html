@@ -392,7 +392,7 @@
       </div>
 
       <div class="tiempo-espera-promedio" id="menu-card">
-        <p class="msj-menu">Consulta nuestro menú <span>
+        <p class="msj-menu">Comienza tu experiencia con nosotros <span>
             <!-- Enlace al Menú -->
           <div class="menu-link-wrap">
             <a class="menu-link" href="https://menu.fu.do/alleria/qr-menu?fbclid=PAZnRzaAM1d1ABplYcM7ZWXntJRWEMG5HghxzkBkMSppj4jewlMbzTJ1gxsBBl-XyzjUz_tw" target="_blank" rel="noopener noreferrer">
@@ -403,8 +403,21 @@
               <span class="icon">📝</span>
               <span>Ordenar ahora</span>
             </button>
+            <!-- Icono de información sobre ordenar -->
+            <button type="button" onclick="toggleMenuInfoPopover()" aria-label="Información sobre ordenar"
+                    style="margin-left:10px; background:none; border:none; cursor:pointer; color:#6b7280; font-size:1.1rem;">
+              ℹ️
+            </button>
           </div>
         </span></p>
+        <!-- Popover informativo del menú/orden -->
+        <div id="menu-info-popover" class="popover-info hidden">
+          <div class="popover-content">
+            <p><strong>ℹ️ Ordenar por adelantado</strong></p>
+            <p>Si realizas tu pedido con anticipación y aún no has llegado cuando sea tu turno, podremos empezar a prepararlo. Al llegar al restaurante, te pediremos confirmarlo para que tengas la opción de hacer cualquier ajuste que desees..</p>
+            <button onclick="toggleMenuInfoPopover()" class="popover-close">Entendido</button>
+          </div>
+        </div>
       </div>
     </div>
     
@@ -1037,13 +1050,24 @@
       popover.classList.toggle("hidden");
     }
 
+    // Popover de información del menú/orden
+    function toggleMenuInfoPopover() {
+      const pop = document.getElementById('menu-info-popover');
+      if (pop) pop.classList.toggle('hidden');
+    }
+
     // Cerrar popover al hacer clic fuera de él
     document.addEventListener('click', function(event) {
-      const popover = document.getElementById("info-popover");
-      const tiempoEspera = document.getElementById("tiempo-espera");
-      
-      if (!popover.contains(event.target) && !tiempoEspera.contains(event.target)) {
-        popover.classList.add("hidden");
+      const popover = document.getElementById('info-popover');
+      const tiempoEspera = document.getElementById('tiempo-espera');
+      if (popover && !popover.contains(event.target) && tiempoEspera && !tiempoEspera.contains(event.target)) {
+        popover.classList.add('hidden');
+      }
+
+      const menuPop = document.getElementById('menu-info-popover');
+      const menuCard = document.getElementById('menu-card');
+      if (menuPop && !menuPop.contains(event.target) && menuCard && !menuCard.contains(event.target)) {
+        menuPop.classList.add('hidden');
       }
     });
 
