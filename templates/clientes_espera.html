@@ -9,6 +9,15 @@
 {% block content %}
   <div class="clientes-container">
 
+    <!-- Tiempo de espera promedio -->
+    <div id="promedio-espera" class="mb-4 p-3 rounded-lg border border-blue-200 bg-blue-50 text-blue-800 flex items-center gap-2">
+      <span class="text-lg">⏱️</span>
+      <div>
+        <div class="font-semibold text-sm sm:text-base">Tiempo de espera promedio</div>
+        <div class="text-sm sm:text-base"><span id="promedio-espera-valor">Calculando...</span></div>
+      </div>
+    </div>
+
     <div class="overflow-x-auto">
       <table class="clientes-table">
         <thead>
@@ -117,6 +126,32 @@
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
       const socket = io();
+      // === Promedio de espera (igual que ve el cliente) ===
+      function cargarPromedioEspera() {
+        fetch('/tiempo_espera_promedio')
+          .then(r => r.json())
+          .then(data => {
+            const el = document.getElementById('promedio-espera-valor');
+            if (!el) return;
+            const seg = Number(data.promedio_segundos || 0);
+            const min = Math.round(seg / 60);
+            if (min <= 1) {
+              // Mostrar en segundos si es <= 60s para mayor precisión
+              el.textContent = seg < 60 ? `${seg}s` : `${min} min`;
+            } else {
+              el.textContent = `${min} min`;
+            }
+          })
+          .catch(() => {
+            const el = document.getElementById('promedio-espera-valor');
+            if (el) el.textContent = '—';
+          });
+      }
+
+      // Cargar al inicio y refrescar cada 30s
+      cargarPromedioEspera();
+      setInterval(cargarPromedioEspera, 30000);
+
 
       // Variables para gestión de cola
       let clienteSeleccionado = null;
@@ -388,6 +423,8 @@
       // Escuchar eventos para actualizar la lista de clientes
       socket.on('actualizar_lista_clientes', actualizarListaClientes);
       socket.on('actualizar_cola', actualizarListaClientes);
+      // También refrescar el promedio cuando cambia la cola
+      socket.on('actualizar_cola', cargarPromedioEspera);
     </script>
 {% endblock %}
 </body>
