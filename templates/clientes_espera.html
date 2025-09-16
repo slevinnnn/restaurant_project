@@ -15,12 +15,12 @@
           <tr>
             <th class="text-xs sm:text-sm">ID</th>
             <th class="text-xs sm:text-sm">Nombre</th>
-            <th class="text-xs sm:text-sm">Teléfono</th>
             <th class="text-xs sm:text-sm">Comensales</th>
-            <th class="text-xs sm:text-sm">Llegada</th>
-            <th class="text-xs sm:text-sm">Espera</th>
             <th class="text-xs sm:text-sm">Orden</th>
             <th class="text-xs sm:text-sm">Acciones</th>
+            <th class="text-xs sm:text-sm">Teléfono</th>
+            <th class="text-xs sm:text-sm">Llegada</th>
+            <th class="text-xs sm:text-sm">Espera</th>
           </tr>
         </thead>
         <tbody id="clientes-lista">
@@ -40,20 +40,7 @@
             <td class="text-xs sm:text-sm whitespace-nowrap cursor-pointer" onclick="mostrarPopoverCliente({{ c.id }}, '{{ c.nombre }}', '{{ c.telefono }}', {{ c.cantidad_comensales }})">
               {{ c.nombre|truncate(15) }}
             </td>
-            <td class="text-xs sm:text-sm whitespace-nowrap">
-              {% if c.telefono %}
-                <button onclick="llamarCliente('{{ c.telefono }}')" class="text-blue-600 hover:text-blue-800" title="Llamar">
-                  📞 {{ c.telefono[-8:] }}
-                </button>
-              {% else %}
-                <span class="text-gray-400">Sin teléfono</span>
-              {% endif %}
-            </td>
             <td class="text-xs sm:text-sm text-center">{{ c.cantidad_comensales }}</td>
-            <td class="text-xs sm:text-sm whitespace-nowrap">{{ c.joined_at.strftime('%H:%M') }}</td>
-            <td class="text-xs sm:text-sm" id="wait-time-{{ c.id }}">
-              <span class="waiting-time" data-joined="{{ c.joined_at.isoformat() }}">Calculando...</span>
-            </td>
             <td class="text-xs sm:text-sm">
               {% if c.orden_previa %}
                 <button onclick="verOrdenPrevia({{ c.id }})" class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs" title="Orden previa">
@@ -76,6 +63,19 @@
                   #{{ loop.index }} en fila
                 </span>
               {% endif %}
+            </td>
+            <td class="text-xs sm:text-sm whitespace-nowrap">
+              {% if c.telefono %}
+                <button onclick="llamarCliente('{{ c.telefono }}')" class="text-blue-600 hover:text-blue-800" title="Llamar">
+                  📞 {{ c.telefono[-8:] }}
+                </button>
+              {% else %}
+                <span class="text-gray-400">Sin teléfono</span>
+              {% endif %}
+            </td>
+            <td class="text-xs sm:text-sm whitespace-nowrap">{{ c.joined_at.strftime('%H:%M') }}</td>
+            <td class="text-xs sm:text-sm" id="wait-time-{{ c.id }}">
+              <span class="waiting-time" data-joined="{{ c.joined_at.isoformat() }}">Calculando...</span>
             </td>
           </tr>
           {% endfor %}
@@ -340,15 +340,13 @@
                 tr.innerHTML = `
                   <td class="text-xs sm:text-sm whitespace-nowrap">#${c.id}</td>
                   <td class="text-xs sm:text-sm whitespace-nowrap cursor-pointer" onclick="mostrarPopoverCliente(${c.id}, '${c.nombre}', '${c.telefono || ''}', ${c.cantidad_comensales})">${(c.nombre || 'Sin nombre').substring(0, 15)}</td>
-                  <td class="text-xs sm:text-sm whitespace-nowrap">${telefonoCell}</td>
                   <td class="text-xs sm:text-sm text-center">${c.cantidad_comensales || '-'}</td>
+                  <td class="text-xs sm:text-sm">${ordenCell}</td>
+                  <td class="text-xs sm:text-sm">${actionCell}</td>
+                  <td class="text-xs sm:text-sm whitespace-nowrap">${telefonoCell}</td>
                   <td class="text-xs sm:text-sm whitespace-nowrap">${joinedDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
                   <td class="text-xs sm:text-sm" id="wait-time-${c.id}">
                     <span class="waiting-time" data-joined="${c.joined_at}">Calculando...</span>
-                  </td>
-                  <td class="text-xs sm:text-sm">${ordenCell}</td>
-                  <td class="text-xs sm:text-sm">
-                    ${actionCell}
                   </td>
                 `;
                 tbody.appendChild(tr);
@@ -356,7 +354,7 @@
             }
             
             // Reiniciar temporizadores para mostrar tiempo de espera
-            updateAllWaitingTimes();
+            updateWaitingTimes();
           })
           .catch(error => {
             console.error('Error al actualizar lista de clientes:', error);
