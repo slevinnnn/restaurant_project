@@ -52,7 +52,7 @@ body {
 }
 
 main {
-  padding-top: 12vh;
+  padding-top: 20vh;
   padding-bottom: 14vh;
   width: 100%;
   display: flex;
@@ -164,19 +164,19 @@ main {
 }
 
 .msj-bienvenida{
-  @apply text-7xl font-bold text-card_text mb-4;
+  @apply text-7xl font-bold text-gray-700 mb-4;
 }
 
 .msj-actualmente{
-  @apply text-5xl text-card_text mb-2;
+  @apply text-5xl text-gray-700 mb-2;
 }
 
 .msj-tu-numero{
-  @apply text-5xl text-card_text mb-2;
+  @apply text-5xl text-gray-700  mb-2;
 }
 
 .msj-estado{
-  @apply text-5xl font-bold text-card_text mb-2;
+  @apply text-5xl  text-gray-700 mb-2;
 }
 
 .tiempo-espera-promedio{
@@ -184,7 +184,10 @@ main {
 }
 
 .msj-tiempo-espera{
-  @apply text-4xl text-gray-700 font-medium text-center;
+  @apply text-3xl text-gray-700 font-medium text-center;
+}
+.msj-menu{
+  @apply text-2xl text-gray-700 font-medium text-center;
 }
 
 /* Estilos para el popover informativo */
