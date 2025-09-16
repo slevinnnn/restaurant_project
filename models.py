@@ -20,6 +20,8 @@ class Cliente(db.Model):
     sid = db.Column(db.String, nullable=True)  # Socket session ID
     atendido_at = db.Column(db.DateTime, nullable=True)  # Cuándo fue atendido
     mesa_asignada_at = db.Column(db.DateTime, nullable=True)  # Cuándo se le asignó la mesa (para cronómetro)
+    # Nueva: orden previa ingresada por el cliente (JSON en texto)
+    orden_previa = db.Column(db.Text, nullable=True)
 
 class Mesa(db.Model):
     id = db.Column(db.Integer, primary_key=True)

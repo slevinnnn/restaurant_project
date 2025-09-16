@@ -19,13 +19,14 @@
             <th class="text-xs sm:text-sm">Comensales</th>
             <th class="text-xs sm:text-sm">Llegada</th>
             <th class="text-xs sm:text-sm">Espera</th>
+            <th class="text-xs sm:text-sm">Orden</th>
             <th class="text-xs sm:text-sm">Acciones</th>
           </tr>
         </thead>
         <tbody id="clientes-lista">
           {% if not clientes %}
           <tr>
-            <td colspan="7" class="px-6 py-4 text-center text-gray-500 font-medium">
+            <td colspan="8" class="px-6 py-4 text-center text-gray-500 font-medium">
               <div class="text-center py-8">
                 <p class="text-lg">🎉 No hay clientes en espera</p>
                 <p class="text-sm">Todos los clientes han sido atendidos</p>
@@ -52,6 +53,15 @@
             <td class="text-xs sm:text-sm whitespace-nowrap">{{ c.joined_at.strftime('%H:%M') }}</td>
             <td class="text-xs sm:text-sm" id="wait-time-{{ c.id }}">
               <span class="waiting-time" data-joined="{{ c.joined_at.isoformat() }}">Calculando...</span>
+            </td>
+            <td class="text-xs sm:text-sm">
+              {% if c.orden_previa %}
+                <button onclick="verOrdenPrevia({{ c.id }})" class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs" title="Orden previa">
+                  🟡 Ver orden
+                </button>
+              {% else %}
+                <span class="text-gray-400 text-xs">—</span>
+              {% endif %}
             </td>
             <td class="text-xs sm:text-sm">
               {% if loop.index <= 3 %}
@@ -289,7 +299,7 @@
             if (data.length === 0) {
               const tr = document.createElement('tr');
               tr.innerHTML = `
-                <td colspan="7" class="px-6 py-4 text-center text-gray-500 font-medium">
+                <td colspan="8" class="px-6 py-4 text-center text-gray-500 font-medium">
                   <div class="text-center py-8">
                     <p class="text-lg">🎉 No hay clientes en espera</p>
                     <p class="text-sm">Todos los clientes han sido atendidos</p>
@@ -318,6 +328,12 @@
                       📞 ${c.telefono.slice(-8)}
                     </button>`
                   : `<span class="text-gray-400">Sin teléfono</span>`;
+
+                const ordenCell = c.tiene_orden_previa
+                  ? `<button onclick="verOrdenPrevia(${c.id})" class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs" title="Orden previa">
+                       🟡 Ver orden
+                     </button>`
+                  : `<span class="text-gray-400 text-xs">—</span>`;
                 
                 const tr = document.createElement('tr');
                 tr.className = 'border-b border-gray-200 hover:bg-gray-50';
@@ -330,6 +346,7 @@
                   <td class="text-xs sm:text-sm" id="wait-time-${c.id}">
                     <span class="waiting-time" data-joined="${c.joined_at}">Calculando...</span>
                   </td>
+                  <td class="text-xs sm:text-sm">${ordenCell}</td>
                   <td class="text-xs sm:text-sm">
                     ${actionCell}
                   </td>
@@ -344,6 +361,30 @@
           .catch(error => {
             console.error('Error al actualizar lista de clientes:', error);
           });
+      }
+
+      function verOrdenPrevia(clienteId) {
+        fetch(`/obtener_orden_previa/${clienteId}`)
+          .then(r => r.json())
+          .then(data => {
+            if (!data.success) { alert(data.error || 'No se pudo obtener la orden'); return; }
+            const texto = data.orden_previa_texto || 'Sin detalles';
+            // Modal simple
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:10000; display:flex; align-items:center; justify-content:center;';
+            const box = document.createElement('div');
+            box.style.cssText = 'background:#fff; width:90%; max-width:520px; border-radius:12px; padding:16px; white-space:pre-wrap;';
+            box.innerHTML = `
+              <h3 style="font-weight:700; margin-bottom:10px;">🟡 Orden previa</h3>
+              <div style="border:1px solid #e2e8f0; border-radius:10px; padding:12px; font-family:monospace;">${texto.replace(/</g,'&lt;')}</div>
+              <div style="display:flex; justify-content:flex-end; margin-top:12px;">
+                <button id="cerrar-orden-previa" style="background:#334155; color:white; border:none; padding:8px 12px; border-radius:8px;">Cerrar</button>
+              </div>`;
+            modal.appendChild(box);
+            document.body.appendChild(modal);
+            document.getElementById('cerrar-orden-previa').onclick = () => document.body.removeChild(modal);
+          })
+          .catch(() => alert('Error de red al obtener la orden'));
       }
 
       // Escuchar eventos para actualizar la lista de clientes

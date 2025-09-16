@@ -1,4 +1,5 @@
 import os
+import json
 from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, emit, join_room
@@ -121,6 +122,43 @@ def datetime_to_js_timestamp(dt):
     chile_time = convert_to_chile_time(dt)
     # Retornar timestamp en milisegundos para JavaScript
     return int(chile_time.timestamp() * 1000)
+
+def formatear_orden_previa(orden_json_str):
+    """Convierte una orden_previa (JSON en texto) a un texto legible para Mesa.orden.
+    Soporta lista de personas o dict con clave 'personas'.
+    """
+    if not orden_json_str:
+        return None
+    try:
+        data = json.loads(orden_json_str)
+        personas = []
+        if isinstance(data, dict) and isinstance(data.get('personas'), list):
+            personas = data['personas']
+        elif isinstance(data, list):
+            personas = data
+        else:
+            return orden_json_str
+        lineas = []
+        for idx, p in enumerate(personas, start=1):
+            if not isinstance(p, dict):
+                continue
+            comida = p.get('comida') or p.get('plato') or ''
+            bebida = p.get('bebida') or p.get('trago') or ''
+            notas = p.get('notas') or p.get('comentarios') or ''
+            partes = []
+            if comida:
+                partes.append(f"Comida: {comida}")
+            if bebida:
+                partes.append(f"Bebida: {bebida}")
+            if notas:
+                partes.append(f"Notas: {notas}")
+            contenido = ' | '.join(partes) if partes else '(sin detalles)'
+            lineas.append(f"Persona {idx}: {contenido}")
+        if not lineas:
+            return orden_json_str
+        return "Orden previa ingresada por el cliente:\n" + "\n".join(lineas)
+    except Exception:
+        return orden_json_str
 
 app = Flask(__name__)
 
@@ -264,7 +302,9 @@ def cliente(nombre=None, cantidad_comensales=None, telefono=None):
                 mesa_asignada_at=cliente_existente.mesa_asignada_at.isoformat() if cliente_existente.mesa_asignada_at else None,
                 mesa_asignada=cliente_existente.assigned_table,
                 llegada_cola=llegada_cola_iso,
-                llegada_cola_str=llegada_cola_fmt
+                llegada_cola_str=llegada_cola_fmt,
+                cantidad_comensales=cliente_existente.cantidad_comensales,
+                orden_previa_json=cliente_existente.orden_previa or None
             )
     
     # Si no hay sesión o el cliente no existe, crear uno nuevo
@@ -407,6 +447,12 @@ def liberar_mesa(mesa_id):
                     mesa_liberada.start_time = get_chile_time()
                     mesa_liberada.cliente_id = siguiente.id
                     mesa_liberada.llego_comensal = False
+                    # Propagar orden previa si existe
+                    if siguiente.orden_previa:
+                        try:
+                            mesa_liberada.orden = formatear_orden_previa(siguiente.orden_previa)
+                        except Exception:
+                            mesa_liberada.orden = siguiente.orden_previa
                     
                 # Mantener la sesión del cliente; no limpiar para soportar recargas sin duplicados
                     
@@ -501,6 +547,13 @@ def asignar_cliente_a_mesas():
             mesa.cliente_id = cliente.id  # Mismo cliente en todas las mesas del grupo
             mesa.llego_comensal = False
         
+        # Si hay orden previa, colocarla en la mesa principal
+        if cliente.orden_previa:
+            try:
+                mesa_principal.orden = formatear_orden_previa(cliente.orden_previa)
+            except Exception:
+                mesa_principal.orden = cliente.orden_previa
+
         db.session.commit()
         
     # Mantener la sesión del cliente; no limpiar para soportar recargas sin duplicados
@@ -600,6 +653,13 @@ def asignar_cliente_multiple(cliente_id):
             mesa.cliente_id = cliente.id  # Mismo cliente en todas las mesas del grupo
             mesa.llego_comensal = False
         
+        # Si hay orden previa, colocarla en la mesa principal
+        if cliente.orden_previa:
+            try:
+                mesa_principal.orden = formatear_orden_previa(cliente.orden_previa)
+            except Exception:
+                mesa_principal.orden = cliente.orden_previa
+
         db.session.commit()
         
     # Mantener la sesión del cliente; no limpiar para soportar recargas sin duplicados
@@ -781,6 +841,12 @@ def cancelar_reserva(mesa_id):
             mesa.start_time = get_chile_time()
             mesa.cliente_id = siguiente.id
             mesa.llego_comensal = False
+            # Si el cliente tiene orden previa, propagar a la mesa
+            if siguiente.orden_previa:
+                try:
+                    mesa.orden = formatear_orden_previa(siguiente.orden_previa)
+                except Exception:
+                    mesa.orden = siguiente.orden_previa
             
             # Limpiar sesión si corresponde
             if 'cliente_id' in session and session['cliente_id'] == siguiente.id:
@@ -856,6 +922,12 @@ def desocupar_y_cancelar(mesa_id):
             mesa.start_time = get_chile_time()
             mesa.cliente_id = siguiente.id
             mesa.llego_comensal = False
+            # Propagar orden previa si existe
+            if siguiente.orden_previa:
+                try:
+                    mesa.orden = formatear_orden_previa(siguiente.orden_previa)
+                except Exception:
+                    mesa.orden = siguiente.orden_previa
             # Limpiar sesión si corresponde
             if 'cliente_id' in session and session['cliente_id'] == siguiente.id:
                 session.pop('cliente_id', None)
@@ -949,7 +1021,8 @@ def obtener_clientes():
             'nombre': c.nombre,
             'telefono': c.telefono,
             'cantidad_comensales': c.cantidad_comensales,
-            'joined_at': c.joined_at.strftime('%Y-%m-%d %H:%M:%S')
+            'joined_at': c.joined_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'tiene_orden_previa': bool(c.orden_previa)
         } for c in clientes
     ])
 
@@ -1186,6 +1259,65 @@ def tiempo_espera_promedio():
         "promedio_segundos": promedio_segundos,
         "promedio_minutos": promedio_minutos
     })
+
+@app.route('/guardar_orden_previa', methods=['POST'])
+def guardar_orden_previa():
+    """Guarda o actualiza la orden previa del cliente autenticado en sesión.
+    Espera JSON: { personas: [{ comida, bebida, notas } ...] }
+    """
+    try:
+        if 'cliente_id' not in session:
+            return jsonify({"success": False, "error": "No autorizado"}), 401
+
+        data = request.get_json() or {}
+        # Validar estructura mínima
+        personas = data.get('personas')
+        if personas is None or not isinstance(personas, list):
+            return jsonify({"success": False, "error": "Formato inválido"}), 400
+
+        # Limpieza mínima de strings
+        cleaned = []
+        for p in personas:
+            if not isinstance(p, dict):
+                continue
+            cleaned.append({
+                'comida': (p.get('comida') or '').strip(),
+                'bebida': (p.get('bebida') or '').strip(),
+                'notas': (p.get('notas') or '').strip(),
+            })
+
+        cliente = db.session.get(Cliente, session['cliente_id'])
+        if not cliente:
+            return jsonify({"success": False, "error": "Cliente no encontrado"}), 404
+
+        # Guardar como JSON bonito
+        cliente.orden_previa = json.dumps({'personas': cleaned}, ensure_ascii=False)
+        db.session.commit()
+
+        # Notificar a trabajadores para refrescar lista
+        socketio.emit('actualizar_lista_clientes')
+
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error en guardar_orden_previa: {e}")
+        return jsonify({"success": False, "error": "Error interno"}), 500
+
+@app.route('/obtener_orden_previa/<int:cliente_id>')
+@worker_required
+def obtener_orden_previa(cliente_id):
+    try:
+        cliente = db.session.get(Cliente, cliente_id)
+        if not cliente:
+            return jsonify({"success": False, "error": "Cliente no encontrado"}), 404
+        return jsonify({
+            "success": True,
+            "orden_previa": cliente.orden_previa or None,
+            "orden_previa_texto": formatear_orden_previa(cliente.orden_previa) if cliente.orden_previa else None
+        })
+    except Exception as e:
+        print(f"Error en obtener_orden_previa: {e}")
+        return jsonify({"success": False, "error": "Error interno"}), 500
 
 @app.route('/verificar_estado_cliente/<int:cliente_id>')
 def verificar_estado_cliente(cliente_id):
