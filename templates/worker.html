@@ -84,6 +84,12 @@
               <i class="fas fa-user mesa-info-icon"></i>
               <span>{{ m.cliente.nombre if m.cliente else 'Cliente sin nombre' }}</span>
             </div>
+            {% if m.recien_asignada and m.cliente and m.cliente.en_camino %}
+            <div class="mesa-info-row">
+              <span class="mesa-info-icon" aria-hidden="true">🚶‍♂️</span>
+              <span title="Cliente en camino" style="color:#2563EB;">En camino</span>
+            </div>
+            {% endif %}
             <div class="mesa-info-row">
               <i class="fas fa-users mesa-info-icon"></i>
               <span>{{ m.cliente.cantidad_comensales if m.cliente else '0' }} comensales</span>

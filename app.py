@@ -316,7 +316,8 @@ def cliente(nombre=None, cantidad_comensales=None, telefono=None):
                 llegada_cola=llegada_cola_iso,
                 llegada_cola_str=llegada_cola_fmt,
                 cantidad_comensales=cliente_existente.cantidad_comensales,
-                orden_previa_json=cliente_existente.orden_previa or None
+                orden_previa_json=cliente_existente.orden_previa or None,
+                en_camino=bool(getattr(cliente_existente, 'en_camino', False))
             )
     
     # Si no hay sesión o el cliente no existe, crear uno nuevo
@@ -1034,7 +1035,8 @@ def obtener_clientes():
             'telefono': c.telefono,
             'cantidad_comensales': c.cantidad_comensales,
             'joined_at': c.joined_at.strftime('%Y-%m-%d %H:%M:%S'),
-            'tiene_orden_previa': bool(c.orden_previa)
+            'tiene_orden_previa': bool(c.orden_previa),
+            'en_camino': bool(getattr(c, 'en_camino', False))
         } for c in clientes
     ])
 
@@ -1272,6 +1274,35 @@ def tiempo_espera_promedio():
         "promedio_minutos": promedio_minutos
     })
 
+@app.route('/marcar_en_camino', methods=['POST'])
+def marcar_en_camino():
+    """Permite que el cliente en sesión marque que viene en camino."""
+    try:
+        if 'cliente_id' not in session:
+            return jsonify({"success": False, "error": "No autorizado"}), 401
+
+        cliente = db.session.get(Cliente, session['cliente_id'])
+        if not cliente:
+            return jsonify({"success": False, "error": "Cliente no encontrado"}), 404
+
+        # Solo tiene sentido si aún no tiene mesa asignada
+        if cliente.assigned_table is None:
+            cliente.en_camino = True
+            db.session.commit()
+            # Notificar a UIs
+            socketio.emit('actualizar_lista_clientes')
+            socketio.emit('actualizar_cola')
+            return jsonify({"success": True})
+        else:
+            # Si ya tiene mesa, también marcamos (visible en mesa recién asignada)
+            cliente.en_camino = True
+            db.session.commit()
+            socketio.emit('actualizar_mesas')
+            return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route('/guardar_orden_previa', methods=['POST'])
 def guardar_orden_previa():
     """Guarda o actualiza la orden previa del cliente autenticado en sesión.
@@ -1346,7 +1377,8 @@ def verificar_estado_cliente(cliente_id):
             'mesa_asignada': cliente.assigned_table,
             'joined_at': cliente.joined_at.isoformat() if cliente.joined_at else None,
             'mesa_asignada_at': cliente.mesa_asignada_at.isoformat() if cliente.mesa_asignada_at else None,
-            'tiene_mesa': cliente.assigned_table is not None
+            'tiene_mesa': cliente.assigned_table is not None,
+            'en_camino': bool(getattr(cliente, 'en_camino', False))
         }
         
         return jsonify(response)

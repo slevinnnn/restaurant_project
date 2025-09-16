@@ -249,11 +249,7 @@
     .tiene-mesa #cancelar-turno-container {
       display: none !important;
     }
-      border-radius: 0.5rem;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-      z-index: 1000;
-      animation: slideDown 0.3s ease-out;
-    }
+    
     
     /* Forzar visibilidad del cronómetro */
     .cronometro-container:not(.hidden) {
@@ -414,7 +410,7 @@
         <div id="menu-info-popover" class="popover-info hidden">
           <div class="popover-content">
             <p><strong>ℹ️ Ordenar por adelantado</strong></p>
-            <p>Si realizas tu pedido con anticipación y aún no has llegado cuando sea tu turno, podremos empezar a prepararlo. Al llegar al restaurante, te pediremos confirmarlo para que tengas la opción de hacer cualquier ajuste que desees..</p>
+            <p>Si anotas tu pedido con anticipación y aún no has llegado cuando sea tu turno, podremos empezar a prepararlo. Al llegar al restaurante, te pediremos confirmarlo para que tengas la opción de hacer cualquier ajuste que desees..</p>
             <button onclick="toggleMenuInfoPopover()" class="popover-close">Entendido</button>
           </div>
         </div>
@@ -454,6 +450,17 @@
         </div>
       </div>
     </div>
+
+    <!-- CTA: Avisar que viene en camino (aparece desde que falten 10 min) -->
+    <div id="en-camino-container" class="tiempo-espera-promedio hidden" style="display:none;">
+      <p class="msj-estado" style="text-align:center; margin-bottom:8px;">¿Vienes en camino?</p>
+      <div style="display:flex; justify-content:center; gap:10px;">
+        <button id="btn-en-camino" style="background:#2563eb; color:#fff; border:none; padding:10px 16px; border-radius:10px; font-weight:700;">
+          🚶 Ya voy en camino
+        </button>
+        <span id="estado-en-camino" class="hidden" style="color:#16a34a; font-weight:700; align-self:center;">✔️ En camino</span>
+      </div>
+    </div>
     
     <!-- Botón para cancelar turno (solo visible mientras espera) -->
     <div id="cancelar-turno-container" class="cancelar-turno-container">
@@ -491,9 +498,11 @@
   const llegadaColaISO = {{ llegada_cola|tojson }};
   const cantidadComensales = {{ (cantidad_comensales or 1)|tojson }};
   const ordenPreviaInicial = {{ (orden_previa_json or None)|tojson }};
+  const enCaminoInicial = {{ en_camino|tojson }};
   const socket = io();
   let cronometroInterval = null;
   let cronometroAsignacion = null; // Date del momento de asignación para cálculo absoluto
+  let enCaminoMarcado = !!enCaminoInicial;
   
   // Si ya viene mesa asignada al cargar, ocultar menú y botón de ordenar
   (function ocultarMenuSiTieneMesaInicial(){
@@ -810,6 +819,8 @@
     window.addEventListener('load', async () => {
       // Mostrar la hora de llegada de inmediato
       mostrarHoraLlegada();
+      // Al cargar, intentamos obtener el tiempo para evaluar el pre-aviso temprano
+      try { actualizarTiempoEsperaPromedio(); } catch(e) {}
       if ('serviceWorker' in navigator && 'Notification' in window) {
         await registrarServiceWorker();
         
@@ -959,6 +970,16 @@
         }
       } catch (e) {
         console.error('Error restaurando estado tras refresh:', e);
+      }
+
+      // Si no hay mesa asignada al cargar, resetear estado de pre-avisos en esta sesión
+      if (!mesaAsignadaInicial) {
+        pre10Shown = false;
+        pre5Shown = false;
+        entryInitialRemainingSec = null;
+        entryUnder10 = false;
+        entryUnder5 = false;
+        entryEvaluated = false;
       }
     });
 
@@ -1187,6 +1208,7 @@
         .then(response => response.json())
         .then(data => {
           const minutos = data.promedio_minutos;
+          const segundos = data.promedio_segundos;
           const elemento = document.getElementById("tiempo-promedio");
           
           if (minutos <= 5) {
@@ -1199,6 +1221,9 @@
             elemento.textContent = `${minutos} minutos ⏳`;
             elemento.style.color = "#ef4444"; // Rojo
           }
+
+          // Evaluar pre-aviso con el valor en segundos
+          evaluarPreAviso(segundos);
         })
         .catch(error => {
           console.error('Error obteniendo tiempo de espera:', error);
@@ -1280,9 +1305,16 @@
       }
     });
 
-    let isConnected = false;
-    let lastKnownMesa = null;
-    let notificationShown = false;
+  let isConnected = false;
+  let lastKnownMesa = null;
+  let notificationShown = false;
+  // Pre-avisos: manejar 10 y 5 minutos de forma independiente y según condición de entrada
+  let pre10Shown = false;
+  let pre5Shown = false;
+  let entryInitialRemainingSec = null; // restante al momento de la primera evaluación
+  let entryUnder10 = false; // si al entrar ya quedaban <= 10 min
+  let entryUnder5 = false;  // si al entrar ya quedaban <= 5 min
+  let entryEvaluated = false; // se fijó el valor inicial
     
     socket.on("es_tu_turno", (data) => {
       console.log('🎉 === EVENTO ES_TU_TURNO RECIBIDO ===');
@@ -1328,7 +1360,8 @@
         
         // Ocultar elementos no necesarios, incluyendo la card del menú
         const menuCard = document.getElementById('menu-card');
-        [actualmenteElement, atendiendoElement, tuNumeroElement, bienvenidaElement, tiempoEsperaElement, llegadaElement, menuCard].forEach((el, index) => {
+        const enCaminoCta = document.getElementById('en-camino-container');
+        [actualmenteElement, atendiendoElement, tuNumeroElement, bienvenidaElement, tiempoEsperaElement, llegadaElement, menuCard, enCaminoCta].forEach((el, index) => {
           if (el) {
             el.style.display = "none";
             console.log(`✅ Elemento ${index + 1} ocultado`);
@@ -1384,6 +1417,171 @@
       document.body.classList.add('turno-activo');
       estado.innerHTML = `<span class="turno-mensaje">¡Es tu turno ${nombreCliente || ''}!<br><span class="turno-mesa">Ve a la mesa ${mesa}</span></span>`;
     }
+
+    // ==================== PRE-AVISO: Faltan <=10 minutos ====================
+    function mostrarNotificacionPreAviso(minsRestantesAprox){
+      // Notificación web estándar
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        try {
+          const noti = new Notification('⏳ Tu turno se acerca', {
+            body: `Faltan ~${minsRestantesAprox} minutos para tu turno. Te sugerimos comenzar a caminar hacia el restaurante.`,
+            icon: '/static/images/logo-alleria.png',
+            badge: '/static/images/logo-alleria.png',
+            vibrate: [300, 150, 300],
+            tag: 'preaviso-turno',
+            renotify: false,
+            requireInteraction: false,
+            data: { tipo: 'preaviso', timestamp: Date.now() }
+          });
+          setTimeout(() => noti.close(), 20000);
+        } catch (e) { console.warn('No se pudo crear notificación de preaviso:', e); }
+      }
+
+      // Notificación via Service Worker (si está activo)
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        try {
+          navigator.serviceWorker.controller.postMessage({
+            type: 'SHOW_NOTIFICATION',
+            title: '⏳ Tu turno se acerca',
+            body: `Faltan ~${minsRestantesAprox} minutos para tu turno. Te sugerimos comenzar a caminar hacia el restaurante.`
+          });
+        } catch (e) { console.warn('SW preaviso no disponible:', e); }
+      }
+
+      // Alerta visual superpuesta (mismo estilo que turno)
+      crearAlertaPreAviso(minsRestantesAprox);
+    }
+
+    function crearAlertaPreAviso(minsRestantesAprox){
+      // Remover si ya existe
+      const anterior = document.getElementById('alerta-preaviso');
+      if (anterior) anterior.remove();
+
+      const overlay = document.createElement('div');
+      overlay.id = 'alerta-preaviso';
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 9999;
+        display: flex; align-items: center; justify-content: center; animation: pulse 1s infinite;`;
+
+      overlay.innerHTML = `
+        <div style="
+          background: white; padding: 1.75rem; border-radius: 1rem;
+          text-align: center; max-width: 92%; box-shadow: 0 20px 50px rgba(0,0,0,0.45);
+          border: 3px solid #2563eb;">
+          <div style="font-size: 3rem; margin-bottom: 0.75rem;">⏳</div>
+          <h2 style="font-size: 1.6rem; color: #1e3a8a; margin-bottom: 0.5rem; font-weight: 800;">
+            ¡Tu turno se acerca!
+          </h2>
+          <p style="font-size: 1.05rem; margin-bottom: 0.75rem; color: #111827;">
+            Faltan aproximadamente <strong>${minsRestantesAprox} minutos</strong> para tu turno.
+          </p>
+          <p style="color: #374151; margin-bottom: 1.25rem;">
+            Te sugerimos comenzar a caminar hacia el restaurante.
+          </p>
+          <button onclick="document.getElementById('alerta-preaviso').remove()"
+            style="background:#2563eb; color:#fff; padding:0.8rem 1.3rem; border:none; border-radius:0.5rem; font-weight:700; cursor:pointer;">
+            Entendido
+          </button>
+        </div>`;
+      document.body.appendChild(overlay);
+      setTimeout(() => { if (document.getElementById('alerta-preaviso')) document.getElementById('alerta-preaviso').remove(); }, 20000);
+    }
+
+    function evaluarPreAviso(promedioSegundos){
+      try {
+        if (notificationShown) return; // ya le tocó
+        if (mesaAsignadaInicial) return; // ya venía con mesa
+        if (!llegadaColaISO) return; // sin hora de llegada
+
+        const llegada = new Date(llegadaColaISO);
+        if (isNaN(llegada.getTime())) return;
+        const ahora = new Date();
+        const estimadoTurno = new Date(llegada.getTime() + (Number(promedioSegundos) || 0) * 1000);
+        const diffSec = Math.floor((estimadoTurno - ahora) / 1000);
+
+        // Fijar condición de entrada una única vez (primera evaluación válida)
+        if (!entryEvaluated) {
+          entryInitialRemainingSec = diffSec;
+          entryUnder10 = entryInitialRemainingSec <= 600;
+          entryUnder5 = entryInitialRemainingSec <= 300;
+          entryEvaluated = true;
+        }
+
+        // Si al entrar quedaban <=5 min: no mostrar ningún pre-aviso (ni 10 ni 5)
+        if (entryUnder5) return;
+
+        // Aviso de 10 min: solo si al entrar quedaban >10 min
+        if (!entryUnder10 && !pre10Shown && diffSec > 0 && diffSec <= 600) {
+          const minsAprox10 = Math.max(1, Math.ceil(diffSec / 60));
+          mostrarNotificacionPreAviso(minsAprox10);
+          pre10Shown = true;
+          // Mostrar CTA de 'en camino' desde este momento
+          mostrarCTAEnCamino();
+        }
+
+        // Aviso de 5 min: solo si al entrar quedaban >5 min
+        if (!pre5Shown && diffSec > 0 && diffSec <= 300) {
+          const minsAprox5 = Math.max(1, Math.ceil(diffSec / 60));
+          mostrarNotificacionPreAviso(minsAprox5);
+          pre5Shown = true;
+        }
+
+        // Si ya pasamos el umbral de 10 min y al entrar quedaban >10 min, asegurar CTA visible
+        if (!entryUnder10 && diffSec > 0 && diffSec <= 600) {
+          mostrarCTAEnCamino();
+        }
+      } catch (e) {
+        console.warn('No se pudo evaluar pre-aviso:', e);
+      }
+    }
+
+    function mostrarCTAEnCamino(){
+      try {
+        const cont = document.getElementById('en-camino-container');
+        const btn = document.getElementById('btn-en-camino');
+        const est = document.getElementById('estado-en-camino');
+        if (!cont || !btn || !est) return;
+        cont.classList.remove('hidden');
+        cont.style.display = 'block';
+        if (enCaminoMarcado) {
+          btn.disabled = true;
+          btn.style.opacity = '0.6';
+          est.classList.remove('hidden');
+        }
+      } catch(e) { /* noop */ }
+    }
+
+    // Click en "Ya voy en camino"
+    (function bindEnCamino(){
+      const btn = document.getElementById('btn-en-camino');
+      if (!btn) return;
+      btn.addEventListener('click', async () => {
+        try {
+          btn.disabled = true;
+          btn.textContent = '⏳ Marcando...';
+          const resp = await fetch('/marcar_en_camino', { method: 'POST' });
+          const data = await resp.json();
+          if (data && data.success) {
+            enCaminoMarcado = true;
+            const est = document.getElementById('estado-en-camino');
+            if (est) est.classList.remove('hidden');
+            btn.textContent = '✔️ En camino';
+            btn.style.opacity = '0.6';
+          } else {
+            btn.disabled = false;
+            btn.textContent = '🚶 Ya voy en camino';
+            alert((data && data.error) || 'No se pudo marcar en camino');
+          }
+        } catch (e) {
+          btn.disabled = false;
+          btn.textContent = '🚶 Ya voy en camino';
+          alert('Error de red');
+        }
+      });
+    })();
   </script>
 </body>
 </html>

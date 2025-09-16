@@ -22,6 +22,8 @@ class Cliente(db.Model):
     mesa_asignada_at = db.Column(db.DateTime, nullable=True)  # Cuándo se le asignó la mesa (para cronómetro)
     # Nueva: orden previa ingresada por el cliente (JSON en texto)
     orden_previa = db.Column(db.Text, nullable=True)
+    # Indicador: el cliente marcó que viene en camino
+    en_camino = db.Column(db.Boolean, default=False)
 
 class Mesa(db.Model):
     id = db.Column(db.Integer, primary_key=True)

@@ -48,6 +48,9 @@
             <td class="text-xs sm:text-sm whitespace-nowrap">#{{ c.id }}</td>
             <td class="text-xs sm:text-sm whitespace-nowrap cursor-pointer" onclick="mostrarPopoverCliente({{ c.id }}, '{{ c.nombre }}', '{{ c.telefono }}', {{ c.cantidad_comensales }})">
               {{ c.nombre|truncate(15) }}
+              {% if c.en_camino %}
+                <span title="En camino" class="ml-1">🚶‍♂️</span>
+              {% endif %}
             </td>
             <td class="text-xs sm:text-sm text-center">{{ c.cantidad_comensales }}</td>
             <td class="text-xs sm:text-sm">
@@ -374,7 +377,7 @@
                 tr.className = 'border-b border-gray-200 hover:bg-gray-50';
                 tr.innerHTML = `
                   <td class="text-xs sm:text-sm whitespace-nowrap">#${c.id}</td>
-                  <td class="text-xs sm:text-sm whitespace-nowrap cursor-pointer" onclick="mostrarPopoverCliente(${c.id}, '${c.nombre}', '${c.telefono || ''}', ${c.cantidad_comensales})">${(c.nombre || 'Sin nombre').substring(0, 15)}</td>
+                  <td class="text-xs sm:text-sm whitespace-nowrap cursor-pointer" onclick="mostrarPopoverCliente(${c.id}, '${c.nombre}', '${c.telefono || ''}', ${c.cantidad_comensales})">${(c.nombre || 'Sin nombre').substring(0, 15)}${c.en_camino ? ' <span title="En camino" class="ml-1">🚶‍♂️</span>' : ''}</td>
                   <td class="text-xs sm:text-sm text-center">${c.cantidad_comensales || '-'}</td>
                   <td class="text-xs sm:text-sm">${ordenCell}</td>
                   <td class="text-xs sm:text-sm">${actionCell}</td>
