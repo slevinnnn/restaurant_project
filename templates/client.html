@@ -961,6 +961,12 @@
           if (cancelarContainer) {
             cancelarContainer.style.display = 'none';
           }
+
+          // Mostrar CTA "En camino" si aún no se ha marcado, incluso con mesa asignada
+          const enCaminoCta = document.getElementById('en-camino-container');
+          if (enCaminoCta && !enCaminoMarcado) {
+            mostrarCTAEnCamino();
+          }
           
           // Agregar clase para indicar que tiene mesa
           document.body.classList.add('tiene-mesa');
@@ -1361,12 +1367,19 @@
         // Ocultar elementos no necesarios, incluyendo la card del menú
         const menuCard = document.getElementById('menu-card');
         const enCaminoCta = document.getElementById('en-camino-container');
-        [actualmenteElement, atendiendoElement, tuNumeroElement, bienvenidaElement, tiempoEsperaElement, llegadaElement, menuCard, enCaminoCta].forEach((el, index) => {
+        [actualmenteElement, atendiendoElement, tuNumeroElement, bienvenidaElement, tiempoEsperaElement, llegadaElement, menuCard].forEach((el, index) => {
           if (el) {
             el.style.display = "none";
             console.log(`✅ Elemento ${index + 1} ocultado`);
           }
         });
+
+        // Mostrar opción de "En camino" incluso después de asignar mesa, si aún no se marcó
+        try {
+          if (enCaminoCta && !enCaminoMarcado) {
+            mostrarCTAEnCamino();
+          }
+        } catch (e) { /* noop */ }
 
         // Cerrar el modal de orden si estuviera abierto
         try {
@@ -1381,7 +1394,7 @@
           console.log('✅ Botón de cancelar turno ocultado');
         }
         
-        // Agregar clase para indicar que tiene mesa
+  // Agregar clase para indicar que tiene mesa
         document.body.classList.add('tiene-mesa');
         
         // Mostrar notificación push con debugging
