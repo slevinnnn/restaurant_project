@@ -18,8 +18,9 @@
       </div>
     </div>
 
-    <div class="overflow-x-auto">
-      <table class="clientes-table">
+    <!-- Contenedor con scroll para la tabla -->
+    <div class="overflow-x-auto max-h-[70vh] overflow-y-auto">
+      <table class="clientes-table min-w-full bg-white shadow-sm rounded-lg overflow-hidden">
         <thead>
           <tr>
             <th class="text-xs sm:text-sm">ID</th>
@@ -87,8 +88,8 @@
   </div>
 
   <!-- Modal para asignación manual -->
-  <div id="modal-asignacion" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-    <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+  <div id="modal-asignacion" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md mx-auto my-8 max-h-[90vh] overflow-y-auto">
       <h3 class="text-lg font-bold mb-4">Asignar Cliente a Mesas</h3>
       <div id="info-cliente-modal" class="mb-4 p-3 bg-blue-50 rounded">
         <!-- Info del cliente se llenará dinámicamente -->
@@ -96,7 +97,7 @@
       
       <div class="mb-4">
         <h4 class="font-semibold mb-2">Selecciona las mesas:</h4>
-        <div id="selector-mesas" class="grid grid-cols-4 gap-2">
+        <div id="selector-mesas" class="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-60 overflow-y-auto p-2 border border-gray-200 rounded">
           <!-- Mesas disponibles se llenarán dinámicamente -->
         </div>
         <div id="capacidad-seleccionada" class="mt-2 text-sm text-gray-600">
