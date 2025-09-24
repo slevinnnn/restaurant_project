@@ -1303,49 +1303,6 @@ def marcar_en_camino():
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/guardar_orden_previa', methods=['POST'])
-def guardar_orden_previa():
-    """Guarda o actualiza la orden previa del cliente autenticado en sesión.
-    Espera JSON: { personas: [{ comida, bebida, notas } ...] }
-    """
-    try:
-        if 'cliente_id' not in session:
-            return jsonify({"success": False, "error": "No autorizado"}), 401
-
-        data = request.get_json() or {}
-        # Validar estructura mínima
-        personas = data.get('personas')
-        if personas is None or not isinstance(personas, list):
-            return jsonify({"success": False, "error": "Formato inválido"}), 400
-
-        # Limpieza mínima de strings
-        cleaned = []
-        for p in personas:
-            if not isinstance(p, dict):
-                continue
-            cleaned.append({
-                'comida': (p.get('comida') or '').strip(),
-                'bebida': (p.get('bebida') or '').strip(),
-                'notas': (p.get('notas') or '').strip(),
-            })
-
-        cliente = db.session.get(Cliente, session['cliente_id'])
-        if not cliente:
-            return jsonify({"success": False, "error": "Cliente no encontrado"}), 404
-
-        # Guardar como JSON bonito
-        cliente.orden_previa = json.dumps({'personas': cleaned}, ensure_ascii=False)
-        db.session.commit()
-
-        # Notificar a trabajadores para refrescar lista
-        socketio.emit('actualizar_lista_clientes')
-
-        return jsonify({"success": True})
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error en guardar_orden_previa: {e}")
-        return jsonify({"success": False, "error": "Error interno"}), 500
-
 @app.route('/obtener_orden_previa/<int:cliente_id>')
 @worker_required
 def obtener_orden_previa(cliente_id):
