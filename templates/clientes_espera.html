@@ -54,18 +54,11 @@
             </td>
             <td class="text-xs sm:text-sm text-center">{{ c.cantidad_comensales }}</td>
             <td class="text-xs sm:text-sm">
-              {% if loop.index <= 3 %}
-                <!-- Solo los primeros 3 clientes pueden ser asignados -->
-                <button onclick="iniciarAsignacionManual({{ c.id }}, '{{ c.nombre }}', {{ c.cantidad_comensales }})" 
-                        class="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs">
-                  🏠 Asignar
-                </button>
-              {% else %}
-                <!-- Otros clientes muestran su posición en la fila -->
-                <span class="bg-gray-300 text-gray-600 px-2 py-1 rounded text-xs">
-                  #{{ loop.index }} en fila
-                </span>
-              {% endif %}
+              <!-- Todos los clientes pueden ser asignados manualmente -->
+              <button onclick="iniciarAsignacionManual({{ c.id }}, '{{ c.nombre }}', {{ c.cantidad_comensales }}, '{{ c.telefono or '' }}')" 
+                      class="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs">
+                🏠 Asignar
+              </button>
             </td>
             <td class="text-xs sm:text-sm whitespace-nowrap">
               {% if c.telefono %}
@@ -115,6 +108,31 @@
       </div>
     </div>
   </div>
+
+  <!-- Modal de confirmación de asignación -->
+  <div id="modal-confirmacion-asignacion" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg p-4 sm:p-6 w-full max-w-sm mx-auto">
+      <div class="text-center">
+        <div class="mb-4">
+          <span class="text-4xl">✅</span>
+        </div>
+        <h3 class="text-lg font-bold mb-2 text-green-600">¡Cliente Asignado!</h3>
+        <div id="info-asignacion" class="mb-4 text-sm text-gray-600">
+          <!-- Info de la asignación se llenará dinámicamente -->
+        </div>
+        
+        <div class="flex flex-col gap-2">
+          <button id="btn-llamar-cliente" onclick="llamarClienteAsignado()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded flex items-center justify-center gap-2">
+            📞 Llamar al Cliente
+          </button>
+          <button onclick="cerrarModalConfirmacionAsignacion()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded">
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 {% endblock %}
 {% block scripts %}
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
@@ -194,17 +212,19 @@
       }
 
       // Función para iniciar asignación manual
-      function iniciarAsignacionManual(clienteId, clienteNombre, cantidadComensales) {
+      function iniciarAsignacionManual(clienteId, clienteNombre, cantidadComensales, clienteTelefono) {
         clienteSeleccionado = {
           id: clienteId,
           nombre: clienteNombre,
-          comensales: cantidadComensales
+          comensales: cantidadComensales,
+          telefono: clienteTelefono
         };
         
         // Mostrar información del cliente
         document.getElementById('info-cliente-modal').innerHTML = `
           <strong>${clienteNombre}</strong><br>
           <span class="text-sm">👥 ${cantidadComensales} comensales</span>
+          ${clienteTelefono ? `<br><span class="text-sm">📞 ${clienteTelefono}</span>` : ''}
         `;
         
         // Cargar mesas disponibles
@@ -292,7 +312,8 @@
         .then(res => res.json())
         .then(data => {
           if (data.success) {
-            alert(`Cliente ${data.cliente_nombre} asignado exitosamente a las mesas: ${data.mesas_totales.join(', ')}`);
+            // Mostrar modal de confirmación con opción de llamar
+            mostrarModalConfirmacionAsignacion(data.cliente_nombre, data.mesas_totales, clienteSeleccionado.telefono);
             cerrarModalAsignacion();
             actualizarListaClientes(); // Actualizar la lista sin recargar
           } else {
@@ -315,6 +336,42 @@
           btn.classList.remove('bg-blue-500', 'text-white');
         });
         document.getElementById('capacidad-total').textContent = '0';
+      }
+
+      // Variables para el modal de confirmación
+      let clienteAsignado = null;
+
+      function mostrarModalConfirmacionAsignacion(clienteNombre, mesasAsignadas, clienteTelefono) {
+        clienteAsignado = { nombre: clienteNombre, telefono: clienteTelefono };
+        
+        // Mostrar información de la asignación
+        document.getElementById('info-asignacion').innerHTML = `
+          <strong>${clienteNombre}</strong> ha sido asignado a las mesas:<br>
+          <span class="font-semibold text-green-600">${mesasAsignadas.join(', ')}</span>
+        `;
+        
+        // Mostrar u ocultar botón de llamar según si hay teléfono
+        const btnLlamar = document.getElementById('btn-llamar-cliente');
+        if (clienteTelefono && clienteTelefono.trim() !== '') {
+          btnLlamar.style.display = 'flex';
+        } else {
+          btnLlamar.style.display = 'none';
+        }
+        
+        // Mostrar el modal
+        document.getElementById('modal-confirmacion-asignacion').classList.remove('hidden');
+      }
+
+      function cerrarModalConfirmacionAsignacion() {
+        document.getElementById('modal-confirmacion-asignacion').classList.add('hidden');
+        clienteAsignado = null;
+      }
+
+      function llamarClienteAsignado() {
+        if (clienteAsignado && clienteAsignado.telefono) {
+          llamarCliente(clienteAsignado.telefono);
+          cerrarModalConfirmacionAsignacion();
+        }
       }
 
       function actualizarListaClientes() {
@@ -340,16 +397,11 @@
               data.forEach((c, index) => {
                 const joinedDate = new Date(c.joined_at);
                 
-                // Permitir asignar manualmente a los primeros 3 clientes en la fila
-                const isTopThree = index < 3;
-                const actionCell = isTopThree
-                  ? `<button onclick="iniciarAsignacionManual(${c.id}, '${c.nombre}', ${c.cantidad_comensales})" 
+                // Todos los clientes pueden ser asignados manualmente
+                const actionCell = `<button onclick="iniciarAsignacionManual(${c.id}, '${c.nombre}', ${c.cantidad_comensales}, '${c.telefono || ''}')" 
                             class="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs">
                       🏠 Asignar
-                    </button>`
-                  : `<span class="bg-gray-300 text-gray-600 px-2 py-1 rounded text-xs">
-                      #${index + 1} en fila
-                    </span>`;
+                    </button>`;
                 
                 // Celda de teléfono
                 const telefonoCell = c.telefono 

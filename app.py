@@ -1261,6 +1261,38 @@ def guardar_orden(mesa_id):
         print(f"Error en guardar_orden: {e}")
         return jsonify({"success": False, "error": f"Error interno: {str(e)}"})
 
+@app.route('/obtener_info_mesa/<int:mesa_id>')
+@worker_required
+def obtener_info_mesa(mesa_id):
+    """Obtener información completa de la mesa incluyendo datos del cliente"""
+    try:
+        mesa = db.session.get(Mesa, mesa_id)
+        if not mesa:
+            return jsonify({"success": False, "error": "Mesa no encontrada"})
+        
+        response_data = {
+            "success": True,
+            "mesa_id": mesa.id,
+            "is_occupied": mesa.is_occupied,
+            "cliente": None
+        }
+        
+        # Si la mesa tiene un cliente asignado, incluir sus datos
+        if mesa.cliente:
+            response_data["cliente"] = {
+                "id": mesa.cliente.id,
+                "nombre": mesa.cliente.nombre,
+                "telefono": mesa.cliente.telefono,
+                "cantidad_comensales": mesa.cliente.cantidad_comensales,
+                "en_camino": mesa.cliente.en_camino
+            }
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        print(f"Error en obtener_info_mesa: {e}")
+        return jsonify({"success": False, "error": f"Error interno: {str(e)}"})
+
 @app.route('/tiempo_espera_promedio')
 def tiempo_espera_promedio():
     """Endpoint para obtener el tiempo de espera promedio"""

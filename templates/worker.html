@@ -474,6 +474,30 @@
           });
 
     }
+
+    function llamarClienteDesdeMesa(mesaId) {
+        // Obtener información de la mesa y el cliente
+        fetch(`/obtener_info_mesa/${mesaId}`)
+          .then(response => response.json())
+          .then(data => {
+            if (data.success && data.cliente && data.cliente.telefono) {
+              const telefono = data.cliente.telefono;
+              const nombre = data.cliente.nombre || 'Cliente';
+              
+              // Confirmar antes de llamar
+              if (confirm(`¿Llamar a ${nombre}?\nTeléfono: ${telefono}`)) {
+                // Abrir la aplicación de teléfono
+                window.open(`tel:${telefono}`, '_self');
+              }
+            } else {
+              alert('No se pudo obtener el teléfono del cliente');
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            alert('Error al obtener información del cliente');
+          });
+    }
         function reservarMesa(mesaId) {
       fetch(`/reservar_mesa/${mesaId}`, { method: 'POST' })
         .then(res => res.json())
@@ -625,7 +649,7 @@
         if (mesaElement && mesaElement.classList.contains('recien-asignada')) {
           const countdownElement = document.getElementById(`countdown-${mesaId}`);
           if (countdownElement) {
-            const segundosRestantes = 300 - segundos; // 5 minutos = 300 segundos
+            const segundosRestantes = 600 - segundos; // 10 minutos = 600 segundos
             if (segundosRestantes > 0) {
               const minutos = Math.floor(segundosRestantes / 60);
               const segs = segundosRestantes % 60;
@@ -633,8 +657,8 @@
             }
           }
 
-            // Cambiar de recién asignada a ocupada después de 5 minutos
-            const tiempo_espera = 300;
+            // Cambiar de recién asignada a ocupada después de 10 minutos
+            const tiempo_espera = 600;
           if (segundos >= tiempo_espera) {
             llegoComensal(mesaId);
           }
@@ -672,7 +696,7 @@
           <button onclick="accionMesa(${mesaId}, '${estado}')" class="w-full bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition-colors border border-green-200">
             👥 Ocupar
           </button>
-          <button onclick=\"ocuparDosOMas(${mesaId})\" class=\"w-full bg-teal-50 hover:bg-teal-100 text-teal-700 rounded-lg transition-colors border border-teal-200\">\n            👥 Ocupar 2+\n          </button>
+          <button onclick=\"ocuparDosOMas(${mesaId})\" class=\"w-full bg-teal-50 hover:bg-teal-100 text-teal-700 rounded-lg transition-colors border border-teal-200\">\n            👥 Juntar mesas\n          </button>
           <button onclick="cambiarCapacidad(${mesaId})" class="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg transition-colors border border-purple-200">
             👥 Cambiar Capacidad
           </button>
@@ -691,6 +715,9 @@
         `;
       } else if (estado === 'recien-asignada') {
         buttons = `
+          <button onclick="llamarClienteDesdeMesa(${mesaId})" class="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors border border-blue-200">
+            📞 Llamar
+          </button>
           <button onclick="openOrderFromPopover(${mesaId})" class="w-full bg-yellow-50 hover:bg-yellow-100 text-yellow-700 rounded-lg transition-colors border border-yellow-200">
             📝 Orden
           </button>
