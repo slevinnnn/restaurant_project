@@ -608,6 +608,131 @@
       }
     }
 
+    // 🔔 FUNCIONES PARA NOTIFICACIONES PUSH REALES
+    
+    // Clave VAPID pública (necesaria para Web Push)
+    const VAPID_PUBLIC_KEY = 'BKu0Dg213Uep-ADkCqf2mh5Zl4jJVQvYKSQkiellgpZRJUmaY1hfSeEpR-mRxx-81DL41_-MBDc7inLtW7sh7SU';
+    
+    // Convertir clave VAPID a formato UInt8Array
+    function urlBase64ToUint8Array(base64String) {
+      const padding = '='.repeat((4 - base64String.length % 4) % 4);
+      const base64 = (base64String + padding)
+        .replace(/\-/g, '+')
+        .replace(/_/g, '/');
+      
+      const rawData = window.atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+      
+      for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+      }
+      return outputArray;
+    }
+
+    // Suscribir a notificaciones push
+    async function suscribirsePush() {
+      try {
+        console.log('🔔 === INICIANDO SUSCRIPCIÓN PUSH ===');
+        
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+          console.log('❌ Push notifications no soportadas');
+          return false;
+        }
+
+        // Esperar a que el service worker esté listo
+        const registration = await navigator.serviceWorker.ready;
+        console.log('✅ Service Worker listo:', registration);
+
+        // Verificar permisos de notificación
+        if (Notification.permission !== 'granted') {
+          console.log('⚠️ Permisos de notificación no concedidos');
+          const permission = await Notification.requestPermission();
+          if (permission !== 'granted') {
+            console.log('❌ Usuario denegó permisos de notificación');
+            return false;
+          }
+        }
+
+        // Verificar suscripción existente
+        let subscription = await registration.pushManager.getSubscription();
+        
+        if (subscription) {
+          console.log('✅ Ya existe suscripción push:', subscription.endpoint);
+        } else {
+          // Crear nueva suscripción
+          console.log('🔄 Creando nueva suscripción push...');
+          
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+          });
+          
+          console.log('✅ Nueva suscripción creada:', subscription.endpoint);
+        }
+
+        // Enviar suscripción al servidor
+        const response = await fetch('/api/push/subscribe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            subscription: subscription,
+            user_agent: navigator.userAgent
+          })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          console.log('✅ Suscripción enviada al servidor exitosamente');
+          return true;
+        } else {
+          console.error('❌ Error enviando suscripción al servidor:', result.error);
+          return false;
+        }
+
+      } catch (error) {
+        console.error('❌ Error en suscripción push:', error);
+        return false;
+      }
+    }
+
+    // Desuscribirse de push notifications
+    async function desuscribirsePush() {
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        
+        if (subscription) {
+          await subscription.unsubscribe();
+          console.log('✅ Desuscripción exitosa');
+          
+          // Notificar al servidor
+          await fetch('/api/push/unsubscribe', { method: 'POST' });
+        }
+      } catch (error) {
+        console.error('❌ Error desuscribiéndose:', error);
+      }
+    }
+
+    // Verificar estado de la suscripción push
+    async function verificarSuscripcionPush() {
+      try {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+          return false;
+        }
+
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        
+        return subscription !== null;
+      } catch (error) {
+        console.error('❌ Error verificando suscripción:', error);
+        return false;
+      }
+    }
+
     // Mostrar notificación cuando sea el turno
     function mostrarNotificacionTurno(mesa) {
       console.log('🔔 === INICIO NOTIFICACIÓN TURNO ===');
@@ -820,15 +945,37 @@
       mostrarHoraLlegada();
       // Al cargar, intentamos obtener el tiempo para evaluar el pre-aviso temprano
       try { actualizarTiempoEsperaPromedio(); } catch(e) {}
+      
+      // 🔔 INICIALIZACIÓN DE NOTIFICACIONES PUSH
       if ('serviceWorker' in navigator && 'Notification' in window) {
+        console.log('🚀 Iniciando sistema de notificaciones push...');
+        
+        // Registrar Service Worker
         await registrarServiceWorker();
         
         // Solicitar permisos automáticamente después de 2 segundos
         setTimeout(async () => {
           if (Notification.permission === 'default') {
-            await solicitarPermisoNotificaciones();
+            const permisosConcedidos = await solicitarPermisoNotificaciones();
+            
+            if (permisosConcedidos) {
+              // Suscribirse a notificaciones push
+              const suscripcionExitosa = await suscribirsePush();
+              if (suscripcionExitosa) {
+                console.log('🎉 Sistema de notificaciones push completamente configurado');
+              }
+            }
+          } else if (Notification.permission === 'granted') {
+            // Si ya hay permisos, intentar suscripción push
+            const yaSuscrito = await verificarSuscripcionPush();
+            if (!yaSuscrito) {
+              await suscribirsePush();
+            }
+            console.log('✅ Notificaciones push ya configuradas');
           }
         }, 2000);
+      } else {
+        console.log('❌ Navegador no soporta Service Workers o Notificaciones');
       }
       
       // Intentar mantener la pantalla activa (Wake Lock API)

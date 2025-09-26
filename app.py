@@ -4,7 +4,7 @@ from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, emit, join_room
 from functools import wraps
-from models import UsoMesa, db, Cliente, Mesa
+from models import UsoMesa, db, Cliente, Mesa, PushSubscription
 from datetime import datetime, timedelta
 import pytz
 import statistics
@@ -13,6 +13,10 @@ from flask import render_template, request, redirect, url_for, session, flash
 from models import Trabajador
 import secrets
 # from flask_wtf.csrf import CSRFProtect
+
+# 🔔 Imports para notificaciones push
+from pywebpush import webpush, WebPushException
+import base64
 
 def get_chile_time():
     santiago_tz = pytz.timezone('America/Santiago')
@@ -200,6 +204,17 @@ if os.environ.get('FLASK_ENV') == 'production':
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 else:
     app.config['SECRET_KEY'] = secrets.token_hex(32)  # Generar clave aleatoria para desarrollo
+
+# 🔔 CONFIGURACIÓN NOTIFICACIONES PUSH
+# Claves VAPID para Web Push Protocol
+VAPID_PRIVATE_KEY = """-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgm8TC3OWohRPCqBJr
+75mmluQkPHNSO24p9bYURuriQcKhRANCAASrtA4Ntd1HqfgA5Aqn9poeWZeIyVUL
+2CkkJInpZYKWUSVJmmNYX0nhKUfpkccfvNQy+Nf/jAQ3O4py7Vu7Ie0l
+-----END PRIVATE KEY-----"""
+
+VAPID_PUBLIC_KEY = "BKu0Dg213Uep-ADkCqf2mh5Zl4jJVQvYKSQkiellgpZRJUmaY1hfSeEpR-mRxx-81DL41_-MBDc7inLtW7sh7SU"
+VAPID_EMAIL = "mailto:admin@restaurante-alleria.com"
 
 # Configuración de cookies seguras
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_ENV') == 'production'
@@ -508,6 +523,147 @@ def enviar_estado_cola():
             }, to=cliente.sid)
 
 
+# 🔔 FUNCIONES PARA NOTIFICACIONES PUSH REALES
+
+def enviar_notificacion_push(cliente_id, mensaje_data):
+    """
+    Envía una notificación push real al cliente especificado
+    
+    Args:
+        cliente_id (int): ID del cliente
+        mensaje_data (dict): Datos del mensaje con keys: type, title, body, mesa, etc.
+    """
+    try:
+        print(f"🔔 === ENVIANDO NOTIFICACIÓN PUSH ===")
+        print(f"📱 Cliente ID: {cliente_id}")
+        print(f"📦 Datos: {mensaje_data}")
+        
+        # Buscar suscripciones activas del cliente
+        suscripciones = PushSubscription.query.filter_by(
+            cliente_id=cliente_id, 
+            is_active=True
+        ).all()
+        
+        if not suscripciones:
+            print(f"⚠️ No hay suscripciones push activas para cliente {cliente_id}")
+            return False
+        
+        # Configurar headers VAPID
+        vapid_headers = {
+            "Crypto-Key": f"p256ecdsa={VAPID_PUBLIC_KEY}",
+            "Authorization": f"WebPush {VAPID_EMAIL}"
+        }
+        
+        enviadas_exitosamente = 0
+        
+        # Enviar a todas las suscripciones del cliente
+        for suscripcion in suscripciones:
+            try:
+                # Preparar payload
+                payload = json.dumps(mensaje_data)
+                
+                print(f"📡 Enviando push a endpoint: {suscripcion.endpoint[:50]}...")
+                
+                # Enviar notificación push
+                response = webpush(
+                    subscription_info={
+                        "endpoint": suscripcion.endpoint,
+                        "keys": {
+                            "p256dh": suscripcion.p256dh_key,
+                            "auth": suscripcion.auth_key
+                        }
+                    },
+                    data=payload,
+                    vapid_private_key=VAPID_PRIVATE_KEY,
+                    vapid_claims={"sub": VAPID_EMAIL}
+                )
+                
+                print(f"✅ Push enviado exitosamente - Status: {response.status_code}")
+                enviadas_exitosamente += 1
+                
+            except WebPushException as e:
+                print(f"❌ Error WebPush para suscripción {suscripcion.id}: {e}")
+                
+                # Si el endpoint ya no es válido, desactivar la suscripción
+                if e.response and e.response.status_code in [410, 404]:
+                    print(f"🗑️ Desactivando suscripción inválida: {suscripcion.id}")
+                    suscripcion.is_active = False
+                    db.session.commit()
+                    
+            except Exception as e:
+                print(f"❌ Error general enviando push a suscripción {suscripcion.id}: {e}")
+        
+        print(f"📊 Resumen: {enviadas_exitosamente}/{len(suscripciones)} notificaciones enviadas")
+        return enviadas_exitosamente > 0
+        
+    except Exception as e:
+        print(f"❌ Error en enviar_notificacion_push: {e}")
+        return False
+
+
+def notificar_turno_listo(cliente_id, mesa):
+    """
+    Envía notificación push cuando el turno del cliente está listo
+    
+    Args:
+        cliente_id (int): ID del cliente
+        mesa (int): Número de mesa asignada
+    """
+    mensaje_data = {
+        "type": "turno_listo",
+        "title": "🎉 ¡ES TU TURNO!",
+        "body": f"Tu mesa {mesa} está lista. Tienes 10 minutos para llegar.",
+        "mesa": mesa,
+        "timestamp": datetime.now().isoformat(),
+        "priority": "high"
+    }
+    
+    print(f"🚨 NOTIFICACIÓN TURNO LISTO - Cliente {cliente_id}, Mesa {mesa}")
+    return enviar_notificacion_push(cliente_id, mensaje_data)
+
+
+def notificar_preaviso_turno(cliente_id, minutos_restantes):
+    """
+    Envía notificación push de preaviso de turno
+    
+    Args:
+        cliente_id (int): ID del cliente
+        minutos_restantes (int): Minutos restantes aproximados
+    """
+    mensaje_data = {
+        "type": "preaviso",
+        "title": "⏳ Tu turno se acerca",
+        "body": f"Faltan aproximadamente {minutos_restantes} minutos para tu turno.",
+        "minutos": minutos_restantes,
+        "timestamp": datetime.now().isoformat(),
+        "priority": "medium"
+    }
+    
+    print(f"⚠️ NOTIFICACIÓN PREAVISO - Cliente {cliente_id}, {minutos_restantes} min")
+    return enviar_notificacion_push(cliente_id, mensaje_data)
+
+
+def notificar_llamada_mesa(cliente_id, mesa):
+    """
+    Envía notificación push cuando el mesero llama a una mesa
+    
+    Args:
+        cliente_id (int): ID del cliente
+        mesa (int): Número de mesa
+    """
+    mensaje_data = {
+        "type": "llamada_mesa",
+        "title": "📞 Te están llamando",
+        "body": f"El mesero está llamando a tu mesa {mesa}. ¡Acércate!",
+        "mesa": mesa,
+        "timestamp": datetime.now().isoformat(),
+        "priority": "high"
+    }
+    
+    print(f"📞 NOTIFICACIÓN LLAMADA - Cliente {cliente_id}, Mesa {mesa}")
+    return enviar_notificacion_push(cliente_id, mensaje_data)
+
+
 @app.route('/liberar_mesa/<int:mesa_id>', methods=['POST'])
 @worker_required
 def liberar_mesa(mesa_id):
@@ -598,6 +754,9 @@ def liberar_mesa(mesa_id):
                     "mesa": mesa_id_asignada,
                     "asignada_at": cliente_asignado.mesa_asignada_at.isoformat() if cliente_asignado.mesa_asignada_at else None
                 }, to=cliente_asignado.sid)
+            
+            # 🔔 ENVIAR NOTIFICACIÓN PUSH REAL
+            notificar_turno_listo(cliente_asignado.id, mesa_id_asignada)
         
         # Emitir actualizaciones
         socketio.emit('actualizar_mesas')
@@ -688,6 +847,9 @@ def asignar_cliente_a_mesas():
                 "mesas_adicionales": mesas_asignadas[1:] if len(mesas_asignadas) > 1 else [],
                 "asignada_at": cliente.mesa_asignada_at.isoformat() if cliente.mesa_asignada_at else None
             }, to=cliente.sid)
+        
+        # 🔔 ENVIAR NOTIFICACIÓN PUSH REAL
+        notificar_turno_listo(cliente.id, mesa_principal.id)
         
         socketio.emit('actualizar_mesas')
         socketio.emit('actualizar_lista_clientes')
@@ -794,6 +956,9 @@ def asignar_cliente_multiple(cliente_id):
                 "mesas_adicionales": mesas_asignadas[1:] if len(mesas_asignadas) > 1 else [],
                 "asignada_at": cliente.mesa_asignada_at.isoformat() if cliente.mesa_asignada_at else None
             }, to=cliente.sid)
+        
+        # 🔔 ENVIAR NOTIFICACIÓN PUSH REAL
+        notificar_turno_listo(cliente.id, mesa_principal.id)
         
         socketio.emit('actualizar_mesas')
         socketio.emit('actualizar_lista_clientes')
@@ -994,6 +1159,10 @@ def cancelar_reserva(mesa_id):
                 "asignada_at": siguiente.mesa_asignada_at.isoformat() if siguiente.mesa_asignada_at else None
             }, to=siguiente.sid)
         
+        # 🔔 ENVIAR NOTIFICACIÓN PUSH REAL
+        if siguiente:
+            notificar_turno_listo(siguiente.id, mesa.id)
+        
         socketio.emit('actualizar_mesas')
         socketio.emit('actualizar_lista_clientes')
         enviar_estado_cola()
@@ -1063,6 +1232,10 @@ def desocupar_y_cancelar(mesa_id):
                 "mesa": mesa.id,
                 "asignada_at": cliente_notificado.mesa_asignada_at.isoformat() if cliente_notificado.mesa_asignada_at else None
             }, to=cliente_notificado.sid)
+
+        # 🔔 ENVIAR NOTIFICACIÓN PUSH REAL
+        if cliente_notificado:
+            notificar_turno_listo(cliente_notificado.id, mesa.id)
 
         socketio.emit('actualizar_mesas')
         socketio.emit('actualizar_lista_clientes')
@@ -1527,6 +1700,59 @@ def obtener_info_mesa(mesa_id):
         print(f"Error en obtener_info_mesa: {e}")
         return jsonify({"success": False, "error": f"Error interno: {str(e)}"})
 
+
+@app.route('/llamar_mesa/<int:mesa_id>', methods=['POST'])
+@worker_required
+def llamar_mesa(mesa_id):
+    """
+    Envía una notificación push para llamar al cliente de una mesa específica
+    """
+    try:
+        mesa = db.session.get(Mesa, mesa_id)
+        if not mesa:
+            return jsonify({"success": False, "error": "Mesa no encontrada"}), 404
+        
+        if not mesa.is_occupied or not mesa.cliente_id:
+            return jsonify({"success": False, "error": "La mesa no tiene cliente asignado"}), 400
+        
+        # Obtener el cliente
+        cliente = db.session.get(Cliente, mesa.cliente_id)
+        if not cliente:
+            return jsonify({"success": False, "error": "Cliente no encontrado"}), 404
+        
+        print(f"📞 === LLAMANDO A MESA {mesa_id} ===")
+        print(f"👤 Cliente: {cliente.nombre} (ID: {cliente.id})")
+        
+        # Enviar notificación push
+        push_enviado = notificar_llamada_mesa(cliente.id, mesa_id)
+        
+        # También enviar por Socket.IO si está conectado
+        socket_enviado = False
+        if cliente.sid:
+            try:
+                socketio.emit('llamada_mesa', {
+                    'mesa': mesa_id,
+                    'mensaje': f'El mesero está llamando a tu mesa {mesa_id}. ¡Acércate!'
+                }, to=cliente.sid)
+                socket_enviado = True
+                print(f"✅ Notificación Socket.IO enviada al cliente {cliente.id}")
+            except Exception as e:
+                print(f"❌ Error enviando Socket.IO: {e}")
+        
+        return jsonify({
+            "success": True,
+            "mensaje": f"Llamada enviada a mesa {mesa_id}",
+            "cliente": cliente.nombre,
+            "notificaciones": {
+                "push": push_enviado,
+                "socket": socket_enviado
+            }
+        })
+        
+    except Exception as e:
+        print(f"❌ Error en llamar_mesa: {e}")
+        return jsonify({"success": False, "error": "Error interno del servidor"}), 500
+
 @app.route('/guardar_orden/<int:mesa_id>', methods=['POST'])
 @worker_required
 def guardar_orden(mesa_id):
@@ -1637,6 +1863,147 @@ def verificar_estado_cliente(cliente_id):
     except Exception as e:
         print(f"Error verificando estado del cliente {cliente_id}: {e}")
         return jsonify({'error': 'Error interno del servidor'}), 500
+
+
+# 🔔 RUTAS API PARA NOTIFICACIONES PUSH
+
+@app.route('/api/push/subscribe', methods=['POST'])
+def push_subscribe():
+    """
+    Endpoint para que los clientes se suscriban a notificaciones push
+    """
+    try:
+        data = request.json
+        print(f"🔔 === NUEVA SUSCRIPCIÓN PUSH ===")
+        print(f"📦 Data recibida: {data}")
+        
+        if not data or 'subscription' not in data:
+            return jsonify({'success': False, 'error': 'Datos de suscripción faltantes'}), 400
+        
+        subscription = data['subscription']
+        user_agent = data.get('user_agent', '')
+        
+        # Validar campos obligatorios
+        required_fields = ['endpoint', 'keys']
+        for field in required_fields:
+            if field not in subscription:
+                return jsonify({'success': False, 'error': f'Campo requerido faltante: {field}'}), 400
+        
+        keys = subscription['keys']
+        if 'p256dh' not in keys or 'auth' not in keys:
+            return jsonify({'success': False, 'error': 'Claves de suscripción faltantes'}), 400
+        
+        # Obtener cliente desde la sesión
+        cliente_id = session.get('cliente_id')
+        if not cliente_id:
+            return jsonify({'success': False, 'error': 'Sesión de cliente no encontrada'}), 401
+        
+        # Verificar si ya existe una suscripción para este endpoint
+        suscripcion_existente = PushSubscription.query.filter_by(
+            endpoint=subscription['endpoint']
+        ).first()
+        
+        if suscripcion_existente:
+            # Actualizar la suscripción existente
+            suscripcion_existente.cliente_id = cliente_id
+            suscripcion_existente.p256dh_key = keys['p256dh']
+            suscripcion_existente.auth_key = keys['auth']
+            suscripcion_existente.user_agent = user_agent[:500] if user_agent else None
+            suscripcion_existente.is_active = True
+            suscripcion_existente.created_at = get_chile_time()
+            
+            print(f"🔄 Suscripción actualizada para cliente {cliente_id}")
+        else:
+            # Crear nueva suscripción
+            nueva_suscripcion = PushSubscription(
+                cliente_id=cliente_id,
+                endpoint=subscription['endpoint'],
+                p256dh_key=keys['p256dh'],
+                auth_key=keys['auth'],
+                user_agent=user_agent[:500] if user_agent else None,
+                created_at=get_chile_time(),
+                is_active=True
+            )
+            db.session.add(nueva_suscripcion)
+            print(f"✅ Nueva suscripción creada para cliente {cliente_id}")
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Suscripción a notificaciones push registrada exitosamente'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error en push_subscribe: {e}")
+        return jsonify({'success': False, 'error': 'Error interno del servidor'}), 500
+
+
+@app.route('/api/push/unsubscribe', methods=['POST'])
+def push_unsubscribe():
+    """
+    Endpoint para desuscribirse de notificaciones push
+    """
+    try:
+        cliente_id = session.get('cliente_id')
+        if not cliente_id:
+            return jsonify({'success': False, 'error': 'Sesión de cliente no encontrada'}), 401
+        
+        # Desactivar todas las suscripciones del cliente
+        suscripciones = PushSubscription.query.filter_by(cliente_id=cliente_id).all()
+        for suscripcion in suscripciones:
+            suscripcion.is_active = False
+        
+        db.session.commit()
+        
+        print(f"🔕 Cliente {cliente_id} se desuscribió de notificaciones push")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Desuscripción exitosa'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error en push_unsubscribe: {e}")
+        return jsonify({'success': False, 'error': 'Error interno del servidor'}), 500
+
+
+@app.route('/api/push/test', methods=['POST'])
+def test_push_notification():
+    """
+    Endpoint para probar notificaciones push (solo para desarrollo)
+    """
+    try:
+        cliente_id = session.get('cliente_id')
+        if not cliente_id:
+            return jsonify({'success': False, 'error': 'Sesión de cliente no encontrada'}), 401
+        
+        # Enviar notificación de prueba
+        mensaje_data = {
+            "type": "test",
+            "title": "🧪 Notificación de Prueba",
+            "body": "Esta es una notificación de prueba para verificar que todo funciona correctamente.",
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        enviado = enviar_notificacion_push(cliente_id, mensaje_data)
+        
+        return jsonify({
+            'success': enviado,
+            'message': 'Notificación de prueba enviada' if enviado else 'No se pudo enviar la notificación'
+        })
+        
+    except Exception as e:
+        print(f"❌ Error en test_push_notification: {e}")
+        return jsonify({'success': False, 'error': 'Error interno del servidor'}), 500
+
+
+@app.route('/test_push')
+def test_push_page():
+    """Página de prueba para notificaciones push (solo desarrollo)"""
+    return render_template('test_push.html')
 
 @app.route('/cancelar_turno/<int:cliente_id>', methods=['POST'])
 def cancelar_turno(cliente_id):

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Prueba de Notificaciones Push</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 0;
+            display: block;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>🔔 Prueba de Notificaciones Push</h1>
+    
+    <div id="status"></div>
+    
+    <button onclick="registrarSW()">1. Registrar Service Worker</button>
+    <button onclick="solicitarPermisos()">2. Solicitar Permisos</button>
+    <button onclick="suscribirsePush()">3. Suscribirse a Push</button>
+    <button onclick="probarNotificacion()">4. Probar Notificación</button>
+    
+    <h2>Estado del Sistema</h2>
+    <ul>
+        <li>Service Worker: <span id="sw-status">❓ No verificado</span></li>
+        <li>Permisos: <span id="permission-status">❓ No verificado</span></li>
+        <li>Suscripción: <span id="subscription-status">❓ No verificado</span></li>
+    </ul>
+    
+    <script>
+        const VAPID_PUBLIC_KEY = 'BKu0Dg213Uep-ADkCqf2mh5Zl4jJVQvYKSQkiellgpZRJUmaY1hfSeEpR-mRxx-81DL41_-MBDc7inLtW7sh7SU';
+        
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding)
+                .replace(/\-/g, '+')
+                .replace(/_/g, '/');
+            
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
+        
+        function mostrarEstado(mensaje, tipo = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="${tipo}">${mensaje}</div>`;
+            console.log(`[${tipo.toUpperCase()}] ${mensaje}`);
+        }
+        
+        function actualizarEstadoSW() {
+            document.getElementById('sw-status').innerHTML = 
+                'serviceWorker' in navigator ? '✅ Soportado' : '❌ No soportado';
+        }
+        
+        function actualizarEstadoPermisos() {
+            const status = Notification.permission;
+            const statusText = {
+                'granted': '✅ Concedidos',
+                'denied': '❌ Denegados', 
+                'default': '⏳ Pendiente'
+            }[status] || '❓ Desconocido';
+            document.getElementById('permission-status').innerHTML = statusText;
+        }
+        
+        async function registrarSW() {
+            try {
+                if (!('serviceWorker' in navigator)) {
+                    throw new Error('Service Workers no soportados');
+                }
+                
+                const registration = await navigator.serviceWorker.register('/static/sw.js');
+                mostrarEstado('✅ Service Worker registrado exitosamente', 'success');
+                console.log('Registration:', registration);
+                actualizarEstadoSW();
+            } catch (error) {
+                mostrarEstado(`❌ Error registrando SW: ${error.message}`, 'error');
+            }
+        }
+        
+        async function solicitarPermisos() {
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    mostrarEstado('✅ Permisos de notificación concedidos', 'success');
+                } else {
+                    mostrarEstado('❌ Permisos de notificación denegados', 'error');
+                }
+                actualizarEstadoPermisos();
+            } catch (error) {
+                mostrarEstado(`❌ Error solicitando permisos: ${error.message}`, 'error');
+            }
+        }
+        
+        async function suscribirsePush() {
+            try {
+                if (Notification.permission !== 'granted') {
+                    throw new Error('Permisos no concedidos. Solicita permisos primero.');
+                }
+                
+                const registration = await navigator.serviceWorker.ready;
+                
+                const subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+                });
+                
+                console.log('Subscription:', subscription);
+                
+                // Enviar al servidor
+                const response = await fetch('/api/push/subscribe', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        subscription: subscription,
+                        user_agent: navigator.userAgent
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    mostrarEstado('✅ Suscripción a push exitosa', 'success');
+                    document.getElementById('subscription-status').innerHTML = '✅ Activa';
+                } else {
+                    throw new Error(result.error || 'Error desconocido');
+                }
+                
+            } catch (error) {
+                mostrarEstado(`❌ Error en suscripción: ${error.message}`, 'error');
+                document.getElementById('subscription-status').innerHTML = '❌ Error';
+            }
+        }
+        
+        async function probarNotificacion() {
+            try {
+                const response = await fetch('/api/push/test', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    mostrarEstado('✅ Notificación de prueba enviada', 'success');
+                } else {
+                    throw new Error(result.message || 'Error desconocido');
+                }
+                
+            } catch (error) {
+                mostrarEstado(`❌ Error enviando prueba: ${error.message}`, 'error');
+            }
+        }
+        
+        // Inicializar estados
+        window.addEventListener('load', () => {
+            actualizarEstadoSW();
+            actualizarEstadoPermisos();
+        });
+    </script>
+</body>
+</html>

@@ -74,3 +74,23 @@ class Pedidos(db.Model):
     estado = db.Column(db.String(20), default='pendiente')
     
     mesa = db.relationship('Mesa', backref='pedidos')
+
+class PushSubscription(db.Model):
+    """Modelo para almacenar suscripciones de notificaciones push"""
+    id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
+    endpoint = db.Column(db.Text, nullable=False)  # URL del endpoint del navegador
+    p256dh_key = db.Column(db.String(255), nullable=False)  # Clave pública del cliente
+    auth_key = db.Column(db.String(255), nullable=False)  # Clave de autenticación
+    user_agent = db.Column(db.Text, nullable=True)  # Info del navegador/dispositivo
+    created_at = db.Column(db.DateTime, default=get_chile_time)
+    is_active = db.Column(db.Boolean, default=True)  # Para desactivar suscripciones inválidas
+    
+    # Relación con el cliente
+    cliente = db.relationship('Cliente', backref='push_subscriptions')
+    
+    # Índices para optimizar búsquedas
+    __table_args__ = (
+        db.Index('idx_cliente_active', 'cliente_id', 'is_active'),
+        db.Index('idx_endpoint', 'endpoint'),
+    )
