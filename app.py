@@ -234,7 +234,116 @@ def run_migrations():
 # Registrar función para usar en templates
 app.jinja_env.globals['datetime_to_js_timestamp'] = datetime_to_js_timestamp
 
-socketio = SocketIO(app)
+# 🔥 CONFIGURACIÓN ROBUSTA DE SOCKET.IO PARA PRODUCCIÓN
+socketio = SocketIO(
+    app,
+    # 🔄 Configuración de reconexiones
+    ping_timeout=60,      # Tiempo límite para responder ping (60s)
+    ping_interval=25,     # Intervalo entre pings (25s)
+    
+    # 🌐 Configuración de transporte
+    transports=['websocket', 'polling'],  # Permitir WebSocket y polling
+    
+    # ⚙️ Configuraciones de estabilidad
+    async_mode='threading',    # Modo de async
+    logger=True,              # Habilitar logs
+    engineio_logger=True,     # Logs de Engine.IO
+    
+    # 📊 Configuraciones de escalabilidad
+    max_http_buffer_size=1000000,  # Buffer HTTP máximo
+    
+    # 🔒 Seguridad
+    cors_allowed_origins="*",  # Ajustar según necesidades
+)
+
+# 📈 DICCIONARIOS PARA TRACKING DE CLIENTES EN MEMORIA
+clientes_conectados = {}  # {client_id: socket_id}
+sockets_activos = {}      # {socket_id: client_info}
+ultimo_heartbeat = {}     # {client_id: timestamp}
+
+# 🧹 FUNCIÓN DE LIMPIEZA DE MEMORIA
+def limpiar_cliente_desconectado(sid):
+    """Limpia todas las referencias de un cliente desconectado"""
+    try:
+        if sid in sockets_activos:
+            client_info = sockets_activos.pop(sid, {})
+            client_id = client_info.get('client_id')
+            
+            if client_id:
+                # Limpiar de clientes_conectados
+                if client_id in clientes_conectados and clientes_conectados[client_id] == sid:
+                    clientes_conectados.pop(client_id, None)
+                
+                # Limpiar heartbeat tracking
+                ultimo_heartbeat.pop(client_id, None)
+                
+                # Limpiar SID en base de datos
+                try:
+                    cliente = db.session.get(Cliente, client_id)
+                    if cliente and cliente.sid == sid:
+                        cliente.sid = None
+                        db.session.commit()
+                        print(f"✨ Cliente {client_id} limpiado de BD (SID: {sid})")
+                except Exception as e:
+                    print(f"⚠️ Error limpiando BD para cliente {client_id}: {e}")
+                    db.session.rollback()
+                
+                print(f"🧺 Cliente {client_id} completamente desconectado y limpiado")
+            else:
+                print(f"🔍 Socket {sid} desconectado (sin client_id asociado)")
+        else:
+            print(f"ℹ️ Socket {sid} no estaba en tracking activo")
+            
+    except Exception as e:
+        print(f"❌ Error en limpieza de cliente: {e}")
+
+# 🔗 EVENTOS DE CONEXIÓN Y DESCONEXIÓN
+@socketio.on('connect')
+def handle_connect():
+    """Manejo de nuevas conexiones Socket.IO"""
+    sid = request.sid
+    client_ip = request.environ.get('REMOTE_ADDR', 'unknown')
+    user_agent = request.environ.get('HTTP_USER_AGENT', 'unknown')[:100]
+    transport = request.transport if hasattr(request, 'transport') else 'unknown'
+    
+    print(f"🔌 Nuevo socket conectado:")
+    print(f"  🆔 SID: {sid}")
+    print(f"  🌐 IP: {client_ip}")
+    print(f"  🚀 Transport: {transport}")
+    print(f"  📱 User-Agent: {user_agent}")
+    print(f"  📊 Total sockets activos: {len(sockets_activos) + 1}")
+    
+    # Registrar socket
+    sockets_activos[sid] = {
+        'connected_at': datetime.now(),
+        'client_ip': client_ip,
+        'user_agent': user_agent,
+        'transport': transport,
+        'client_id': None  # Se llenará cuando se registre el cliente
+    }
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    """Manejo de desconexiones Socket.IO"""
+    sid = request.sid
+    disconnect_reason = request.event.get('reason', 'unknown') if hasattr(request, 'event') else 'unknown'
+    
+    socket_info = sockets_activos.get(sid, {})
+    client_id = socket_info.get('client_id')
+    connected_duration = None
+    
+    if 'connected_at' in socket_info:
+        connected_duration = datetime.now() - socket_info['connected_at']
+    
+    print(f"❌ Socket desconectado:")
+    print(f"  🆔 SID: {sid}")
+    print(f"  👤 Cliente ID: {client_id or 'No registrado'}")
+    print(f"  🔴 Razón: {disconnect_reason}")
+    print(f"  ⏱️ Duración conexión: {connected_duration or 'unknown'}")
+    print(f"  📊 Total sockets restantes: {len(sockets_activos) - 1}")
+    
+    # Limpiar todas las referencias
+    limpiar_cliente_desconectado(sid)
 
 def login_required(f):
     @wraps(f)
@@ -980,49 +1089,194 @@ def estadisticas():
 
 @socketio.on("registrar_cliente")
 def registrar_cliente(data):
+    """Registro robusto de clientes con tracking completo"""
+    sid = request.sid
+    
     try:
         cliente_id = data.get("id")
-        sid = request.sid
         
-        # Validar que el cliente_id esté en la sesión para prevenir suplantación
+        print(f"📝 Intento de registro:")
+        print(f"  🆔 SID: {sid}")
+        print(f"  👤 Cliente ID: {cliente_id}")
+        print(f"  🔐 Sesión cliente_id: {session.get('cliente_id', 'None')}")
+        
+        # ✔️ Validar que el cliente_id esté en la sesión
         if 'cliente_id' not in session or session['cliente_id'] != cliente_id:
-            print(f"Intento de registro no autorizado para cliente {cliente_id} desde SID {sid}")
+            print(f"❌ Registro NO AUTORIZADO para cliente {cliente_id} desde SID {sid}")
+            emit('error', {'message': 'No autorizado'})
             return False
         
+        # ✔️ Verificar cliente en BD
         cliente = db.session.get(Cliente, cliente_id)
         if not cliente:
-            print(f"Cliente {cliente_id} no encontrado en la base de datos")
+            print(f"❌ Cliente {cliente_id} NO ENCONTRADO en BD")
+            emit('error', {'message': 'Cliente no encontrado'})
             return False
-            
-        # Actualizar SID del cliente
+        
+        # 🧺 Limpiar registros anteriores del mismo cliente
+        if cliente_id in clientes_conectados:
+            old_sid = clientes_conectados[cliente_id]
+            print(f"♾️ Limpiando registro anterior del cliente {cliente_id} (old SID: {old_sid})")
+            limpiar_cliente_desconectado(old_sid)
+        
+        # ✅ Registrar nuevo cliente
         cliente.sid = sid
+        clientes_conectados[cliente_id] = sid
+        ultimo_heartbeat[cliente_id] = datetime.now()
+        
+        # Actualizar info del socket
+        if sid in sockets_activos:
+            sockets_activos[sid]['client_id'] = cliente_id
+            sockets_activos[sid]['registered_at'] = datetime.now()
+        
         db.session.commit()
         
-        join_room(sid)
+        # 🏠 Unirse a sala personal
+        join_room(f"cliente_{cliente_id}")
+        
+        print(f"✨ Cliente {cliente_id} registrado exitosamente:")
+        print(f"  🆔 SID: {sid}")
+        print(f"  📊 Clientes conectados: {len(clientes_conectados)}")
+        print(f"  🏠 En sala: cliente_{cliente_id}")
+        
+        # 📢 Notificar estado actualizado
         socketio.emit('nuevo_cliente', {
             'cliente_id': cliente.id,
             'joined_at': cliente.joined_at.strftime('%Y-%m-%d %H:%M:%S')
         })
+        
+        # 📊 Enviar estado de cola
         enviar_estado_cola()
         
+        # ✅ Confirmar registro exitoso
+        emit('registro_confirmado', {
+            'cliente_id': cliente_id,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+        return True
+        
     except Exception as e:
-        print(f"Error en registrar_cliente: {e}")
+        print(f"❌ Error crítico en registrar_cliente: {e}")
+        print(f"  🆔 SID: {sid}")
+        print(f"  📄 Data: {data}")
+        db.session.rollback()
+        emit('error', {'message': 'Error interno del servidor'})
         return False
 
 @socketio.on("heartbeat")
 def manejar_heartbeat(data):
-    """Manejar heartbeat del cliente para mantener conexión activa"""
+    """Sistema robusto de heartbeat con detección de conexiones zombie"""
+    sid = request.sid
+    
     try:
         cliente_id = data.get('cliente_id')
+        timestamp = data.get('timestamp', datetime.now().timestamp())
+        page_visible = data.get('page_visible', True)
+        
+        # 📊 Stats del heartbeat
+        ahora = datetime.now()
         
         if cliente_id:
-            print(f"💓 Heartbeat de cliente {cliente_id}")
+            # ✅ Heartbeat con cliente_id
+            if cliente_id in clientes_conectados and clientes_conectados[cliente_id] == sid:
+                ultimo_heartbeat[cliente_id] = ahora
+                print(f"💚 Heartbeat OK - Cliente {cliente_id} (visible: {page_visible})")
                 
+                # Verificar que el cliente existe en BD
+                cliente = db.session.get(Cliente, cliente_id)
+                if not cliente:
+                    print(f"⚠️ Cliente {cliente_id} no existe en BD - desconectando")
+                    limpiar_cliente_desconectado(sid)
+                    emit('error', {'message': 'Cliente no válido'})
+                    return False
+                
+                # Actualizar info del socket
+                if sid in sockets_activos:
+                    sockets_activos[sid]['last_heartbeat'] = ahora
+                    sockets_activos[sid]['page_visible'] = page_visible
+                
+            else:
+                print(f"⚠️ Heartbeat de cliente {cliente_id} con SID incorrecto {sid}")
+                print(f"  Esperado: {clientes_conectados.get(cliente_id, 'None')}")
+                print(f"  Recibido: {sid}")
+                limpiar_cliente_desconectado(sid)
+                emit('error', {'message': 'SID no válido'})
+                return False
+        else:
+            # 📄 Heartbeat sin cliente_id (socket no registrado)
+            print(f"� Heartbeat de socket no registrado: {sid}")
+            if sid in sockets_activos:
+                sockets_activos[sid]['last_heartbeat'] = ahora
+        
+        # ✅ Respuesta exitosa del heartbeat
+        emit('heartbeat_ack', {
+            'timestamp': ahora.timestamp(),
+            'server_time': ahora.isoformat(),
+            'clientes_conectados': len(clientes_conectados)
+        })
+        
         return True
         
     except Exception as e:
-        print(f"Error en heartbeat: {e}")
+        print(f"❌ Error en heartbeat: {e}")
+        print(f"  🆔 SID: {sid}")
+        print(f"  📄 Data: {data}")
         return False
+
+# 🧺 LIMPIEZA PERIÓDICA DE CONEXIONES ZOMBIE
+def limpiar_conexiones_zombie():
+    """Limpia conexiones que no han enviado heartbeat en mucho tiempo"""
+    ahora = datetime.now()
+    timeout_segundos = 120  # 2 minutos sin heartbeat = zombie
+    
+    clientes_zombie = []
+    
+    for cliente_id, ultimo_hb in ultimo_heartbeat.items():
+        if (ahora - ultimo_hb).total_seconds() > timeout_segundos:
+            clientes_zombie.append(cliente_id)
+    
+    if clientes_zombie:
+        print(f"🧺 Limpiando {len(clientes_zombie)} conexiones zombie:")
+        
+        for cliente_id in clientes_zombie:
+            if cliente_id in clientes_conectados:
+                sid = clientes_conectados[cliente_id]
+                print(f"  ❌ Cliente zombie: {cliente_id} (SID: {sid})")
+                limpiar_cliente_desconectado(sid)
+                
+                # Notificar al cliente que debe reconectarse
+                try:
+                    socketio.emit('connection_expired', {
+                        'message': 'Conexión expirada, reconectando...'
+                    }, room=f"cliente_{cliente_id}")
+                except:
+                    pass
+        
+        print(f"✨ Limpieza zombie completada")
+    
+    return len(clientes_zombie)
+
+# 🔄 Programar limpieza periódica cada 60 segundos
+import threading
+import time
+
+def limpieza_periodica():
+    """Hilo para limpieza periódica"""
+    while True:
+        try:
+            time.sleep(60)  # Cada minuto
+            with app.app_context():
+                zombie_count = limpiar_conexiones_zombie()
+                if zombie_count > 0:
+                    print(f"🧺 Limpieza periódica: {zombie_count} zombies eliminados")
+        except Exception as e:
+            print(f"❌ Error en limpieza periódica: {e}")
+
+# Iniciar hilo de limpieza
+limpieza_thread = threading.Thread(target=limpieza_periodica, daemon=True)
+limpieza_thread.start()
+print("🧺 Hilo de limpieza periódica iniciado")
 
 @app.route('/clientes')
 @worker_required
@@ -1233,6 +1487,46 @@ def obtener_orden(mesa_id):
         return jsonify({"orden": mesa.orden or ""})
     return jsonify({"orden": ""})
 
+@app.route('/obtener_info_mesa/<int:mesa_id>')
+@worker_required
+def obtener_info_mesa(mesa_id):
+    """Obtener información completa de la mesa incluyendo datos del cliente"""
+    try:
+        mesa = db.session.get(Mesa, mesa_id)
+        if not mesa:
+            return jsonify({"success": False, "error": "Mesa no encontrada"})
+        
+        # Información básica de la mesa
+        info_mesa = {
+            "success": True,
+            "mesa_id": mesa.id,
+            "is_occupied": mesa.is_occupied,
+            "capacidad": mesa.capacidad,
+            "reservada": mesa.reservada,
+            "start_time": mesa.start_time.isoformat() if mesa.start_time else None,
+            "orden": mesa.orden
+        }
+        
+        # Información del cliente si existe
+        if mesa.cliente:
+            info_mesa["cliente"] = {
+                "id": mesa.cliente.id,
+                "nombre": mesa.cliente.nombre,
+                "telefono": mesa.cliente.telefono,
+                "cantidad_comensales": mesa.cliente.cantidad_comensales,
+                "joined_at": mesa.cliente.joined_at.isoformat() if mesa.cliente.joined_at else None,
+                "mesa_asignada_at": mesa.cliente.mesa_asignada_at.isoformat() if mesa.cliente.mesa_asignada_at else None,
+                "en_camino": getattr(mesa.cliente, 'en_camino', False)
+            }
+        else:
+            info_mesa["cliente"] = None
+        
+        return jsonify(info_mesa)
+        
+    except Exception as e:
+        print(f"Error en obtener_info_mesa: {e}")
+        return jsonify({"success": False, "error": f"Error interno: {str(e)}"})
+
 @app.route('/guardar_orden/<int:mesa_id>', methods=['POST'])
 @worker_required
 def guardar_orden(mesa_id):
@@ -1259,38 +1553,6 @@ def guardar_orden(mesa_id):
     except Exception as e:
         db.session.rollback()
         print(f"Error en guardar_orden: {e}")
-        return jsonify({"success": False, "error": f"Error interno: {str(e)}"})
-
-@app.route('/obtener_info_mesa/<int:mesa_id>')
-@worker_required
-def obtener_info_mesa(mesa_id):
-    """Obtener información completa de la mesa incluyendo datos del cliente"""
-    try:
-        mesa = db.session.get(Mesa, mesa_id)
-        if not mesa:
-            return jsonify({"success": False, "error": "Mesa no encontrada"})
-        
-        response_data = {
-            "success": True,
-            "mesa_id": mesa.id,
-            "is_occupied": mesa.is_occupied,
-            "cliente": None
-        }
-        
-        # Si la mesa tiene un cliente asignado, incluir sus datos
-        if mesa.cliente:
-            response_data["cliente"] = {
-                "id": mesa.cliente.id,
-                "nombre": mesa.cliente.nombre,
-                "telefono": mesa.cliente.telefono,
-                "cantidad_comensales": mesa.cliente.cantidad_comensales,
-                "en_camino": mesa.cliente.en_camino
-            }
-        
-        return jsonify(response_data)
-        
-    except Exception as e:
-        print(f"Error en obtener_info_mesa: {e}")
         return jsonify({"success": False, "error": f"Error interno: {str(e)}"})
 
 @app.route('/tiempo_espera_promedio')

@@ -362,6 +362,12 @@
     .menu-link:active { transform: translateY(0); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35); }
     .menu-link .icon { font-size: 1.2rem; line-height: 1; }
     @media (max-width: 480px){ .menu-link { padding: 10px 14px; border-radius: 9px; } }
+    
+    /* 🎬 ANIMACIONES PARA MENSAJES DE RECONEXIÓN */
+    @keyframes fadeOut {
+      from { opacity: 1; transform: translateX(-50%) scale(1); }
+      to { opacity: 0; transform: translateX(-50%) scale(0.9); }
+    }
   </style>
 </head>
 <body>
@@ -462,10 +468,42 @@
   const llegadaColaISO = {{ llegada_cola|tojson }};
   const cantidadComensales = {{ (cantidad_comensales or 1)|tojson }};
   const enCaminoInicial = {{ en_camino|tojson }};
-  const socket = io();
+  
+  // 🔥 CONFIGURACIÓN ROBUSTA DE SOCKET.IO CLIENTE
+  const socket = io({
+    // 🔄 Reconexión automática habilitada
+    reconnection: true,
+    reconnectionAttempts: 10,        // 10 intentos de reconexión
+    reconnectionDelay: 2000,         // 2 segundos entre intentos
+    reconnectionDelayMax: 10000,     // Máximo 10 segundos entre intentos
+    maxReconnectionAttempts: 10,     // Máximo 10 intentos
+    
+    // ⚡ Configuración de timeout
+    timeout: 20000,                  // 20 segundos timeout
+    
+    // 🌐 Transporte
+    transports: ['websocket', 'polling'], // Permitir WebSocket y polling como fallback
+    forceNew: false,                 // Reutilizar conexión existente
+    
+    // 🏃‍♂️ Opciones de rendimiento
+    upgrade: true,                   // Permitir upgrade de polling a websocket
+    rememberUpgrade: true,           // Recordar el upgrade para próximas conexiones
+    
+    // 📊 Monitoreo
+    autoConnect: true,               // Conectar automáticamente
+  });
+  
   let cronometroInterval = null;
   let cronometroAsignacion = null; // Date del momento de asignación para cálculo absoluto
   let enCaminoMarcado = !!enCaminoInicial;
+  
+  // 📊 Variables de tracking de conexión
+  let isConnected = false;
+  let lastKnownMesa = null;
+  let notificationShown = false;
+  let reconexionesCount = 0;
+  let ultimoHeartbeat = null;
+  let heartbeatInterval = null;
   
   // Si ya viene mesa asignada al cargar, ocultar menú
   (function ocultarMenuSiTieneMesaInicial(){
@@ -1106,23 +1144,79 @@
         });
     }
 
+    // 🔗 EVENTOS ROBUSTOS DE SOCKET.IO
+    
     socket.on("connect", () => {
-      console.log('🔌 Socket conectado exitosamente');
+      const transport = socket.io.engine.transport.name; // 'polling' o 'websocket'
+      reconexionesCount++;
+      
+      console.log('🔌 === SOCKET CONECTADO ===');
+      console.log(`  🆔 Socket ID: ${socket.id}`);
+      console.log(`  🚀 Transporte: ${transport}`);
+      console.log(`  🔄 Reconexiones: ${reconexionesCount}`);
+      console.log(`  📄 Datos cliente:`, { id, mesaAsignadaInicial });
+      
       isConnected = true;
-      socket.emit("registrar_cliente", { id: id });
-      // Obtener tiempo de espera promedio al conectarse
+      ultimoHeartbeat = new Date();
+      
+      // 📝 Registrar cliente en servidor
+      socket.emit("registrar_cliente", { 
+        id: id,
+        timestamp: Date.now(),
+        transport: transport,
+        reconexion_num: reconexionesCount
+      });
+      
+      // 📊 Obtener datos iniciales
       actualizarTiempoEsperaPromedio();
-      // Mostrar hora de llegada en HH:MM
       mostrarHoraLlegada();
+      
+      // 💓 Iniciar heartbeat
+      iniciarHeartbeat();
+      
+      // 🔄 Monitorear cambios de transporte
+      socket.io.engine.on('upgrade', () => {
+        const newTransport = socket.io.engine.transport.name;
+        console.log(`⬆️ Transporte actualizado: ${transport} -> ${newTransport}`);
+      });
+      
+      console.log('✅ Conexión completa');
     });
 
     socket.on("disconnect", (reason) => {
-      console.log('❌ Socket desconectado:', reason);
+      console.log('❌ === SOCKET DESCONECTADO ===');
+      console.log(`  🔴 Razón: ${reason}`);
+      console.log(`  ⏱️ Duración conexión: ${ultimoHeartbeat ? new Date() - ultimoHeartbeat : 'unknown'}ms`);
+      console.log(`  🔄 Total reconexiones: ${reconexionesCount}`);
+      
       isConnected = false;
       
-      // Si la desconexión no fue intencional, intentar reconectar
-      if (reason !== 'io client disconnect') {
-        console.log('🔄 Intentando reconectar en 2 segundos...');
+      // 🚫 Detener heartbeat
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+        heartbeatInterval = null;
+      }
+      
+      // 🔄 Estrategia de reconexión según la razón
+      if (reason === 'io server disconnect') {
+        // Servidor desconectó intencionalmente - reconectar inmediatamente
+        console.log('🔄 Servidor desconectó - reconectando inmediatamente...');
+        setTimeout(() => {
+          if (!socket.connected) {
+            socket.connect();
+          }
+        }, 1000);
+      } else if (reason === 'ping timeout' || reason === 'transport close') {
+        // Problemas de red - reconectar con delay
+        console.log('🌐 Problema de red - reconectando en 3 segundos...');
+        setTimeout(() => {
+          if (!socket.connected) {
+            socket.connect();
+          }
+        }, 3000);
+      } else if (reason !== 'io client disconnect') {
+        // Otras desconexiones - reconectar con delay
+        console.log('🔄 Reconectando en 2 segundos...');
         setTimeout(() => {
           if (!socket.connected) {
             socket.connect();
@@ -1132,8 +1226,70 @@
     });
 
     socket.on("connect_error", (error) => {
-      console.error('❌ Error de conexión del socket:', error);
+      console.error('❌ === ERROR DE CONEXIÓN ===');
+      console.error(`  🔴 Error: ${error.message}`);
+      console.error(`  🔄 Reconexiones: ${reconexionesCount}`);
+      console.error(`  ⏱️ Timestamp: ${new Date().toISOString()}`);
+      
       isConnected = false;
+      
+      // 🚨 Mostrar mensaje al usuario después de varios intentos fallidos
+      if (reconexionesCount > 5) {
+        mostrarMensajeReconexion('Problemas de conexión. Reintentando...');
+      }
+    });
+
+    socket.on("reconnect", (attemptNumber) => {
+      console.log(`✨ === RECONECTADO EXITOSAMENTE ===`);
+      console.log(`  🔄 Intento número: ${attemptNumber}`);
+      console.log(`  🆔 Nuevo Socket ID: ${socket.id}`);
+      
+      ocultarMensajeReconexion();
+    });
+
+    socket.on("reconnect_error", (error) => {
+      console.error(`❌ Error en reconexion: ${error.message}`);
+    });
+
+    socket.on("reconnect_failed", () => {
+      console.error('❌ === RECONEXION FALLIDA ===');
+      console.error('  Se agotaron todos los intentos de reconexión');
+      
+      mostrarMensajeReconexion(
+        'No se pudo reconectar. Por favor, recarga la página.',
+        true // mostrar botón de recarga
+      );
+    });
+    
+    // 💓 Respuesta del servidor al heartbeat
+    socket.on("heartbeat_ack", (data) => {
+      console.log(`💚 Heartbeat OK - Server time: ${data.server_time}`);
+      ultimoHeartbeat = new Date();
+    });
+    
+    // ❌ Manejo de errores del servidor
+    socket.on("error", (error) => {
+      console.error('❌ Error del servidor:', error);
+      
+      if (error.message === 'No autorizado' || error.message === 'Cliente no válido') {
+        console.log('🔒 Error de autorización - redirigiendo...');
+        cerrarSesionCliente('error_autorizacion');
+      }
+    });
+    
+    // 🔄 Notificación de conexión expirada
+    socket.on("connection_expired", (data) => {
+      console.log('⏰ Conexión expirada:', data.message);
+      
+      // Intentar reconectar inmediatamente
+      if (!socket.connected) {
+        socket.connect();
+      }
+    });
+    
+    // ✅ Confirmación de registro
+    socket.on("registro_confirmado", (data) => {
+      console.log('✅ Registro confirmado:', data);
     });
 
     // El mesero confirmó 'Llegó': cerrar la sesión del cliente de este dispositivo
@@ -1145,27 +1301,109 @@
     // Actualizar tiempo de espera cada 30 segundos
     setInterval(actualizarTiempoEsperaPromedio, 30000);
 
-    // Sistema de heartbeat simplificado para mantener conexión activa
-    let heartbeatInterval;
+    // 🚨 FUNCIONES DE UI PARA MENSAJES DE RECONEXIÓN
     
-    function iniciarHeartbeat() {
-      if (heartbeatInterval) {
-        clearInterval(heartbeatInterval);
+    function mostrarMensajeReconexion(mensaje, mostrarRecarga = false) {
+      // Remover mensaje anterior si existe
+      const anterior = document.getElementById('mensaje-reconexion');
+      if (anterior) {
+        anterior.remove();
       }
       
+      // Crear nuevo mensaje
+      const div = document.createElement('div');
+      div.id = 'mensaje-reconexion';
+      div.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #ef4444;
+        color: white;
+        padding: 1rem 2rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        z-index: 10001;
+        font-weight: bold;
+        text-align: center;
+        animation: slideDown 0.3s ease-out;
+      `;
+      
+      div.innerHTML = `
+        <div style="margin-bottom: ${mostrarRecarga ? '10px' : '0'};">
+          🌐 ${mensaje}
+        </div>
+        ${mostrarRecarga ? '<button onclick="window.location.reload()" style="background: white; color: #ef4444; border: none; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">↻ Recargar página</button>' : ''}
+      `;
+      
+      document.body.appendChild(div);
+    }
+    
+    function ocultarMensajeReconexion() {
+      const mensaje = document.getElementById('mensaje-reconexion');
+      if (mensaje) {
+        mensaje.style.animation = 'fadeOut 0.3s ease-out';
+        setTimeout(() => {
+          mensaje.remove();
+        }, 300);
+      }
+    }
+
+    // 💓 SISTEMA ROBUSTO DE HEARTBEAT
+    
+    // 💓 SISTEMA ROBUSTO DE HEARTBEAT
+    
+    function iniciarHeartbeat() {
+      // Limpiar heartbeat anterior si existe
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+        heartbeatInterval = null;
+      }
+      
+      console.log('💓 Iniciando heartbeat robusto...');
+      
       heartbeatInterval = setInterval(() => {
-        if (socket.connected && document.visibilityState === 'visible') {
-          console.log('💓 Enviando heartbeat...');
-          socket.emit('heartbeat', { 
-            cliente_id: id, 
-            timestamp: Date.now(),
-            page_visible: true
-          });
-        } else if (!socket.connected) {
-          console.log('💔 Socket desconectado durante heartbeat, reconectando...');
-          socket.connect();
+        if (!socket.connected) {
+          console.log('🚫 Heartbeat cancelado - socket desconectado');
+          return;
         }
-      }, 30000); // Cada 30 segundos (reducido de 15)
+        
+        const ahora = new Date();
+        const pageVisible = document.visibilityState === 'visible';
+        
+        console.log(`💓 Enviando heartbeat... (visible: ${pageVisible})`);
+        
+        socket.emit('heartbeat', { 
+          cliente_id: id, 
+          timestamp: ahora.getTime(),
+          page_visible: pageVisible,
+          user_agent: navigator.userAgent.substring(0, 100),
+          url: window.location.href
+        });
+        
+        // 🔍 Detectar si no recibimos heartbeat_ack en 10 segundos
+        const timeoutId = setTimeout(() => {
+          if (socket.connected) {
+            console.log('⚠️ Heartbeat sin respuesta - posible problema de conexión');
+            // No reconectar automáticamente aquí, dejar que Socket.IO maneje timeouts
+          }
+        }, 10000);
+        
+        // Limpiar timeout si recibimos respuesta
+        const originalHandler = socket.off('heartbeat_ack');
+        socket.once('heartbeat_ack', () => {
+          clearTimeout(timeoutId);
+        });
+        
+      }, 15000); // Cada 15 segundos (más frecuente que el servidor)
+    }
+    
+    function detenerHeartbeat() {
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+        heartbeatInterval = null;
+        console.log('🚫 Heartbeat detenido');
+      }
     }
     
     // Iniciar heartbeat cuando se conecte
@@ -1180,9 +1418,6 @@
       }
     });
 
-  let isConnected = false;
-  let lastKnownMesa = null;
-  let notificationShown = false;
   // Pre-avisos: manejar 10 y 5 minutos de forma independiente y según condición de entrada
   let pre10Shown = false;
   let pre5Shown = false;
