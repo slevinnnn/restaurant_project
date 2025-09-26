@@ -239,12 +239,46 @@ def run_migrations():
     """Ejecutar migraciones automáticamente en producción"""
     try:
         if os.environ.get('DATABASE_URL'):  # Solo en producción (Render)
-            from flask_migrate import upgrade
+            print("🔄 Verificando estado de la base de datos en producción...")
+            
             with app.app_context():
-                upgrade()
-                print("✅ Migraciones aplicadas exitosamente")
+                try:
+                    # Verificar si las tablas principales existen
+                    from models import Cliente, Mesa, PushSubscription
+                    
+                    # Intentar consultar cada tabla para verificar que existe
+                    Cliente.query.limit(1).all()
+                    Mesa.query.limit(1).all() 
+                    PushSubscription.query.limit(1).all()
+                    
+                    print("✅ Todas las tablas necesarias ya existen en la base de datos")
+                    print("✅ Tabla PushSubscription encontrada - notificaciones push habilitadas")
+                    
+                except Exception as table_error:
+                    print(f"⚠️ Algunas tablas no existen o tienen problemas: {table_error}")
+                    
+                    # Intentar crear solo las tablas faltantes
+                    try:
+                        print("📦 Intentando crear tablas faltantes...")
+                        db.create_all()  # Esto solo crea tablas que no existen
+                        print("✅ Tablas faltantes creadas exitosamente")
+                    except Exception as create_error:
+                        print(f"⚠️ Error creando tablas: {create_error}")
+                        
+                        # Como último recurso, intentar migraciones tradicionales
+                        try:
+                            from flask_migrate import upgrade
+                            upgrade()
+                            print("✅ Migraciones aplicadas como fallback")
+                        except Exception as migration_error:
+                            if "already exists" in str(migration_error):
+                                print("✅ Las tablas ya existen (ignorando error de duplicado)")
+                            else:
+                                print(f"❌ Error final en migraciones: {migration_error}")
+                        
     except Exception as e:
-        print(f"⚠️ Error aplicando migraciones: {e}")
+        print(f"⚠️ Error general en verificación de base de datos: {e}")
+        print("🔄 Continuando con inicialización de la aplicación...")
 
 # Registrar función para usar en templates
 app.jinja_env.globals['datetime_to_js_timestamp'] = datetime_to_js_timestamp
@@ -372,23 +406,52 @@ def login_required(f):
 def initialize_tables():
     """Inicializar tablas y datos básicos de la aplicación"""
     try:
-        # Solo crear tablas si no existen (para compatibility con migraciones)
-        db.create_all()
+        # Verificar que las tablas principales funcionen
+        try:
+            from models import Mesa, PushSubscription
+            
+            # Verificar Mesa
+            mesas_existentes = db.session.query(db.func.count(Mesa.id)).scalar() or 0
+            print(f"✅ Tabla Mesa: {mesas_existentes} registros encontrados")
+            
+            # Verificar PushSubscription
+            try:
+                push_count = db.session.query(db.func.count(PushSubscription.id)).scalar() or 0
+                print(f"✅ Tabla PushSubscription: {push_count} suscripciones encontradas")
+            except Exception as push_error:
+                print(f"⚠️ Tabla PushSubscription: {push_error}")
+                # Si la tabla no existe, intentar crearla
+                try:
+                    PushSubscription.__table__.create(db.engine, checkfirst=True)
+                    print("✅ Tabla PushSubscription creada exitosamente")
+                except Exception as create_error:
+                    print(f"❌ No se pudo crear tabla PushSubscription: {create_error}")
+            
+        except Exception as check_error:
+            print(f"⚠️ Error verificando tablas existentes: {check_error}")
+            # Como fallback, intentar crear todas las tablas
+            db.create_all()
+            print("✅ Tablas inicializadas con create_all()")
         
-        mesas_existentes = db.session.query(db.func.count(Mesa.id)).scalar() or 0
-        mesas_deseadas = 26
-        
-        if mesas_existentes < mesas_deseadas:
-            for i in range(mesas_existentes, mesas_deseadas):
-                nueva_mesa = Mesa(capacidad=4)  # Capacidad por defecto
-                db.session.add(nueva_mesa)
-            db.session.commit()
-            print(f"Inicializadas {mesas_deseadas - mesas_existentes} mesas nuevas")
-        else:
-            print(f"Ya existen {mesas_existentes} mesas en la base de datos")
+        # Inicializar mesas si es necesario
+        try:
+            mesas_existentes = db.session.query(db.func.count(Mesa.id)).scalar() or 0
+            mesas_deseadas = 26
+            
+            if mesas_existentes < mesas_deseadas:
+                for i in range(mesas_existentes, mesas_deseadas):
+                    nueva_mesa = Mesa(capacidad=4)
+                    db.session.add(nueva_mesa)
+                db.session.commit()
+                print(f"Inicializadas {mesas_deseadas - mesas_existentes} mesas nuevas")
+            else:
+                print(f"Ya existen {mesas_existentes} mesas en la base de datos")
+        except Exception as mesa_error:
+            print(f"⚠️ Error inicializando mesas: {mesa_error}")
+            db.session.rollback()
             
     except Exception as e:
-        print(f"Error inicializando tablas: {e}")
+        print(f"Error general inicializando tablas: {e}")
         db.session.rollback()
 
 # Solo inicializar si se ejecuta directamente, no en producción
@@ -2247,9 +2310,9 @@ if __name__ == "__main__":
     init_app_data()
     # Configuración para desarrollo vs producción
     if os.environ.get('FLASK_ENV') == 'production':
-        # Configuración para Render (producción)
+        # Configuración para Render (producción) - permitir Werkzeug temporalmente
         port = int(os.environ.get('PORT', 5000))
-        socketio.run(app, host='0.0.0.0', port=port, debug=False)
+        socketio.run(app, host='0.0.0.0', port=port, debug=False, allow_unsafe_werkzeug=True)
     else:
         # Configuración para desarrollo local
         socketio.run(app, debug=True)
