@@ -283,31 +283,127 @@ def run_migrations():
 # Registrar función para usar en templates
 app.jinja_env.globals['datetime_to_js_timestamp'] = datetime_to_js_timestamp
 
-# 🔥 CONFIGURACIÓN ROBUSTA DE SOCKET.IO PARA PRODUCCIÓN
+# 🔥 CONFIGURACIÓN OPTIMIZADA PARA PLAN BÁSICO RENDER (512MB RAM)
 socketio = SocketIO(
     app,
-    # 🔄 Configuración de reconexiones
-    ping_timeout=60,      # Tiempo límite para responder ping (60s)
-    ping_interval=25,     # Intervalo entre pings (25s)
+    # 🔄 Configuración de reconexiones (optimizada para RAM limitada)
+    ping_timeout=45,      # Reducido para liberar conexiones muertas más rápido
+    ping_interval=30,     # Aumentado para reducir overhead
     
-    # 🌐 Configuración de transporte
+    # 🌐 Configuración de transporte mejorada
     transports=['websocket', 'polling'],  # Permitir WebSocket y polling
     
     # ⚙️ Configuraciones de estabilidad
     async_mode='threading',    # Modo de async
-    logger=True,              # Habilitar logs
-    engineio_logger=True,     # Logs de Engine.IO
+    logger=False,             # Reducir logs para producción
+    engineio_logger=False,    # Reducir logs de Engine.IO
     
-    # 📊 Configuraciones de escalabilidad
-    max_http_buffer_size=1000000,  # Buffer HTTP máximo
+    # 📊 Configuraciones optimizadas para RAM limitada
+    max_http_buffer_size=500000,   # Reducido de 1MB a 500KB
     
     # 🔒 Seguridad
     cors_allowed_origins="*",  # Ajustar según necesidades
+    
+    # 🛡️ Configuraciones para RAM limitada
+    client_timeout=45,        # Reducido para liberar recursos más rápido
+    reconnection_attempts=3,  # Reducido para evitar overhead
+    reconnection_delay=3,     # Aumentado para reducir carga
+    
+    # 📉 Configuraciones adicionales para optimizar memoria
+    compression=True,         # Comprimir mensajes
+    max_queue_size=50,       # Limitar cola de mensajes por cliente
 )
 
-# 📈 DICCIONARIOS PARA TRACKING DE CLIENTES EN MEMORIA
+# 📈 DICCIONARIOS PARA TRACKING DE CLIENTES EN MEMORIA (OPTIMIZADO PARA RAM LIMITADA)
 clientes_conectados = {}  # {client_id: socket_id}
 sockets_activos = {}      # {socket_id: client_info}
+
+# 🧹 LÍMITES PARA PLAN BÁSICO (512MB RAM)
+MAX_CONCURRENT_CONNECTIONS = 30  # Límite estricto de conexiones simultáneas
+CONNECTION_CLEANUP_INTERVAL = 300  # Limpiar cada 5 minutos
+MAX_INACTIVE_TIME = 600  # Desconectar clientes inactivos después de 10 minutos
+
+# 🛡️ FUNCIÓN SEGURA PARA EMITIR EVENTOS
+def safe_emit(event, data, room=None, to=None):
+    """Emite eventos de Socket.IO con manejo de errores"""
+    try:
+        if room:
+            socketio.emit(event, data, room=room)
+        elif to:
+            socketio.emit(event, data, to=to)
+        else:
+            socketio.emit(event, data)
+        return True
+    except Exception as e:
+        print(f"❌ Error emitiendo evento '{event}': {e}")
+        return False
+
+# 🎯 FUNCIONES OPTIMIZADAS PARA EMISIÓN SELECTIVA
+def emit_to_workers_only(event, data):
+    """Emite eventos solo a trabajadores (meseros)"""
+    return safe_emit(event, data, room='workers')
+
+def emit_to_clients_only(event, data):
+    """Emite eventos solo a clientes"""
+    return safe_emit(event, data, room='clients')
+
+def emit_to_specific_client(event, data, client_id):
+    """Emite evento a un cliente específico"""
+    return safe_emit(event, data, room=f'cliente_{client_id}')
+
+# 🧹 SISTEMA DE LIMPIEZA PARA OPTIMIZAR RAM
+def limpiar_conexiones_obsoletas():
+    """Limpia conexiones obsoletas para liberar RAM"""
+    try:
+        current_time = datetime.now()
+        conexiones_limpiadas = 0
+        
+        # Limpiar sockets inactivos
+        sockets_a_eliminar = []
+        for sid, info in sockets_activos.items():
+            if 'connected_at' in info:
+                tiempo_inactivo = (current_time - info['connected_at']).total_seconds()
+                if tiempo_inactivo > MAX_INACTIVE_TIME:
+                    sockets_a_eliminar.append(sid)
+        
+        for sid in sockets_a_eliminar:
+            limpiar_cliente_desconectado(sid)
+            conexiones_limpiadas += 1
+        
+        # Limitar conexiones totales
+        if len(sockets_activos) > MAX_CONCURRENT_CONNECTIONS:
+            # Desconectar las conexiones más antiguas
+            conexiones_ordenadas = sorted(
+                sockets_activos.items(),
+                key=lambda x: x[1].get('connected_at', datetime.min)
+            )
+            
+            exceso = len(sockets_activos) - MAX_CONCURRENT_CONNECTIONS
+            for i in range(exceso):
+                sid = conexiones_ordenadas[i][0]
+                limpiar_cliente_desconectado(sid)
+                conexiones_limpiadas += 1
+        
+        if conexiones_limpiadas > 0:
+            print(f"🧹 Limpieza automática: {conexiones_limpiadas} conexiones eliminadas")
+            print(f"📊 Conexiones activas: {len(sockets_activos)}")
+        
+        return conexiones_limpiadas
+        
+    except Exception as e:
+        print(f"❌ Error en limpieza automática: {e}")
+        return 0
+
+def verificar_limite_conexiones():
+    """Verifica si se puede aceptar una nueva conexión"""
+    if len(sockets_activos) >= MAX_CONCURRENT_CONNECTIONS:
+        # Intentar limpiar conexiones obsoletas primero
+        limpiar_conexiones_obsoletas()
+        
+        # Si aún hay demasiadas conexiones, rechazar
+        if len(sockets_activos) >= MAX_CONCURRENT_CONNECTIONS:
+            return False
+    return True
 ultimo_heartbeat = {}     # {client_id: timestamp}
 
 # 🧹 FUNCIÓN DE LIMPIEZA DE MEMORIA
@@ -349,50 +445,71 @@ def limpiar_cliente_desconectado(sid):
 # 🔗 EVENTOS DE CONEXIÓN Y DESCONEXIÓN
 @socketio.on('connect')
 def handle_connect():
-    """Manejo de nuevas conexiones Socket.IO"""
-    sid = request.sid
-    client_ip = request.environ.get('REMOTE_ADDR', 'unknown')
-    user_agent = request.environ.get('HTTP_USER_AGENT', 'unknown')[:100]
-    transport = request.transport if hasattr(request, 'transport') else 'unknown'
-    
-    print(f"🔌 Nuevo socket conectado:")
-    print(f"  🆔 SID: {sid}")
-    print(f"  🌐 IP: {client_ip}")
-    print(f"  🚀 Transport: {transport}")
-    print(f"  📱 User-Agent: {user_agent}")
-    print(f"  📊 Total sockets activos: {len(sockets_activos) + 1}")
-    
-    # Registrar socket
-    sockets_activos[sid] = {
-        'connected_at': datetime.now(),
-        'client_ip': client_ip,
-        'user_agent': user_agent,
-        'transport': transport,
-        'client_id': None  # Se llenará cuando se registre el cliente
-    }
+    """Manejo de nuevas conexiones con límites para plan básico"""
+    try:
+        # Verificar límite de conexiones ANTES de aceptar
+        if not verificar_limite_conexiones():
+            print(f"❌ Conexión rechazada: Límite de {MAX_CONCURRENT_CONNECTIONS} conexiones alcanzado")
+            return False  # Rechazar conexión
+        
+        sid = request.sid
+        client_ip = request.environ.get('REMOTE_ADDR', 'unknown')
+        user_agent = request.environ.get('HTTP_USER_AGENT', 'unknown')[:100]
+        transport = request.transport if hasattr(request, 'transport') else 'unknown'
+        
+        print(f"🔌 Nuevo socket conectado:")
+        print(f"  🆔 SID: {sid}")
+        print(f"  🌐 IP: {client_ip}")
+        print(f"  🚀 Transport: {transport}")
+        print(f"  📱 User-Agent: {user_agent}")
+        print(f"  📊 Total sockets activos: {len(sockets_activos) + 1}/{MAX_CONCURRENT_CONNECTIONS}")
+        
+        # Registrar socket con manejo de errores
+        sockets_activos[sid] = {
+            'connected_at': datetime.now(),
+            'client_ip': client_ip,
+            'user_agent': user_agent,
+            'transport': transport,
+            'client_id': None,  # Se llenará cuando se registre el cliente
+            'last_activity': datetime.now()  # Para tracking de inactividad
+        }
+        
+        return True  # Aceptar conexión
+        
+    except Exception as e:
+        print(f"❌ Error en handle_connect: {e}")
+        return False  # Rechazar conexión en caso de error
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    """Manejo de desconexiones Socket.IO"""
-    sid = request.sid
-    disconnect_reason = request.event.get('reason', 'unknown') if hasattr(request, 'event') else 'unknown'
-    
-    socket_info = sockets_activos.get(sid, {})
-    client_id = socket_info.get('client_id')
-    connected_duration = None
-    
-    if 'connected_at' in socket_info:
-        connected_duration = datetime.now() - socket_info['connected_at']
-    
-    print(f"❌ Socket desconectado:")
-    print(f"  🆔 SID: {sid}")
-    print(f"  👤 Cliente ID: {client_id or 'No registrado'}")
-    print(f"  🔴 Razón: {disconnect_reason}")
-    print(f"  ⏱️ Duración conexión: {connected_duration or 'unknown'}")
-    print(f"  📊 Total sockets restantes: {len(sockets_activos) - 1}")
-    
-    # Limpiar todas las referencias
-    limpiar_cliente_desconectado(sid)
+    """Manejo de desconexiones Socket.IO con manejo de errores mejorado"""
+    try:
+        sid = request.sid
+        disconnect_reason = request.event.get('reason', 'unknown') if hasattr(request, 'event') else 'unknown'
+        
+        socket_info = sockets_activos.get(sid, {})
+        client_id = socket_info.get('client_id')
+        connected_duration = None
+        
+        if 'connected_at' in socket_info:
+            connected_duration = datetime.now() - socket_info['connected_at']
+        
+        print(f"❌ Socket desconectado:")
+        print(f"  🆔 SID: {sid}")
+        print(f"  👤 Cliente ID: {client_id or 'No registrado'}")
+        print(f"  🔴 Razón: {disconnect_reason}")
+        print(f"  ⏱️ Duración conexión: {connected_duration or 'unknown'}")
+        print(f"  📊 Total sockets restantes: {len(sockets_activos) - 1}")
+        
+        # Limpiar todas las referencias con manejo de errores
+        limpiar_cliente_desconectado(sid)
+    except Exception as e:
+        print(f"❌ Error en handle_disconnect: {e}")
+        # Intentar limpiar de todas formas
+        try:
+            limpiar_cliente_desconectado(request.sid)
+        except:
+            pass
 
 def login_required(f):
     @wraps(f)
@@ -544,8 +661,8 @@ def cliente(nombre=None, cantidad_comensales=None, telefono=None):
         # Guardar el ID del cliente en la sesión
         session['cliente_id'] = nuevo.id
         
-        socketio.emit('actualizar_cola')
-        socketio.emit('actualizar_lista_clientes')
+        emit_to_workers_only('actualizar_cola', {})
+        emit_to_workers_only('actualizar_lista_clientes', {})
         enviar_estado_cola()
         # Redirigir a URL limpia para evitar re-creación al refrescar
         return redirect(url_for('cliente'))
@@ -1367,16 +1484,17 @@ def registrar_cliente(data):
         
         db.session.commit()
         
-        # 🏠 Unirse a sala personal
+        # 🏠 Unirse a salas (personal y general de clientes)
         join_room(f"cliente_{cliente_id}")
+        join_room("clients")  # Sala para todos los clientes
         
         print(f"✨ Cliente {cliente_id} registrado exitosamente:")
         print(f"  🆔 SID: {sid}")
         print(f"  📊 Clientes conectados: {len(clientes_conectados)}")
-        print(f"  🏠 En sala: cliente_{cliente_id}")
+        print(f"  🏠 En salas: cliente_{cliente_id}, clients")
         
-        # 📢 Notificar estado actualizado
-        socketio.emit('nuevo_cliente', {
+        # 📢 Notificar estado actualizado (solo a trabajadores)
+        emit_to_workers_only('nuevo_cliente', {
             'cliente_id': cliente.id,
             'joined_at': cliente.joined_at.strftime('%Y-%m-%d %H:%M:%S')
         })
@@ -1400,37 +1518,56 @@ def registrar_cliente(data):
         emit('error', {'message': 'Error interno del servidor'})
         return False
 
+@socketio.on("registrar_trabajador")
+def registrar_trabajador(data):
+    """Registra un trabajador en la sala correspondiente"""
+    try:
+        sid = request.sid
+        trabajador_id = data.get('trabajador_id')
+        
+        if not trabajador_id or 'trabajador_id' not in session:
+            emit('error', {'message': 'No autorizado'})
+            return False
+            
+        # Unirse a sala de trabajadores
+        join_room("workers")
+        
+        # Actualizar información del socket
+        if sid in sockets_activos:
+            sockets_activos[sid]['worker_id'] = trabajador_id
+            sockets_activos[sid]['type'] = 'worker'
+        
+        print(f"👨‍💼 Trabajador {trabajador_id} registrado en sala workers")
+        emit('registro_trabajador_confirmado', {'worker_id': trabajador_id})
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error registrando trabajador: {e}")
+        emit('error', {'message': 'Error interno'})
+        return False
+
 @socketio.on("heartbeat")
 def manejar_heartbeat(data):
-    """Sistema robusto de heartbeat con detección de conexiones zombie"""
+    """Sistema de heartbeat optimizado para RAM limitada"""
     sid = request.sid
     
     try:
         cliente_id = data.get('cliente_id')
-        timestamp = data.get('timestamp', datetime.now().timestamp())
-        page_visible = data.get('page_visible', True)
-        
-        # 📊 Stats del heartbeat
         ahora = datetime.now()
         
+        # Actualizar actividad del socket para prevenir limpieza automática
+        if sid in sockets_activos:
+            sockets_activos[sid]['last_activity'] = ahora
+        
         if cliente_id:
-            # ✅ Heartbeat con cliente_id
+            # ✅ Heartbeat con cliente_id (reducido logging para ahorrar RAM)
             if cliente_id in clientes_conectados and clientes_conectados[cliente_id] == sid:
                 ultimo_heartbeat[cliente_id] = ahora
-                print(f"💚 Heartbeat OK - Cliente {cliente_id} (visible: {page_visible})")
                 
-                # Verificar que el cliente existe en BD
-                cliente = db.session.get(Cliente, cliente_id)
-                if not cliente:
-                    print(f"⚠️ Cliente {cliente_id} no existe en BD - desconectando")
-                    limpiar_cliente_desconectado(sid)
-                    emit('error', {'message': 'Cliente no válido'})
-                    return False
-                
-                # Actualizar info del socket
+                # Verificación optimizada (menos consultas DB)
                 if sid in sockets_activos:
                     sockets_activos[sid]['last_heartbeat'] = ahora
-                    sockets_activos[sid]['page_visible'] = page_visible
+                    sockets_activos[sid]['page_visible'] = data.get('page_visible', True)
                 
             else:
                 print(f"⚠️ Heartbeat de cliente {cliente_id} con SID incorrecto {sid}")
@@ -1872,9 +2009,9 @@ def marcar_en_camino():
         if cliente.assigned_table is None:
             cliente.en_camino = True
             db.session.commit()
-            # Notificar a UIs
-            socketio.emit('actualizar_lista_clientes')
-            socketio.emit('actualizar_cola')
+            # Notificar a UIs (solo trabajadores)
+            emit_to_workers_only('actualizar_lista_clientes', {})
+            emit_to_workers_only('actualizar_cola', {})
             return jsonify({"success": True})
         else:
             # Si ya tiene mesa, también marcamos (visible en mesa recién asignada)
@@ -2092,8 +2229,8 @@ def cancelar_turno(cliente_id):
         session.clear()
         
         # Notificar a todos los trabajadores que la lista de clientes cambió
-        socketio.emit('actualizar_lista_clientes')
-        socketio.emit('actualizar_cola')
+        emit_to_workers_only('actualizar_lista_clientes', {})
+        emit_to_workers_only('actualizar_cola', {})
         enviar_estado_cola()
         
         return jsonify({
@@ -2308,9 +2445,30 @@ if __name__ == "__main__":
     
     # Inicializar datos de la aplicación
     init_app_data()
+    
+    # 🧹 Iniciar limpieza automática en producción
+    if os.environ.get('FLASK_ENV') == 'production':
+        import threading
+        import time
+        
+        def limpieza_periodica():
+            """Función que ejecuta limpieza automática cada 5 minutos"""
+            while True:
+                time.sleep(CONNECTION_CLEANUP_INTERVAL)
+                try:
+                    with app.app_context():
+                        limpiar_conexiones_obsoletas()
+                except Exception as e:
+                    print(f"❌ Error en limpieza periódica: {e}")
+        
+        # Iniciar hilo de limpieza
+        cleanup_thread = threading.Thread(target=limpieza_periodica, daemon=True)
+        cleanup_thread.start()
+        print(f"🧹 Sistema de limpieza automática iniciado (cada {CONNECTION_CLEANUP_INTERVAL}s)")
+    
     # Configuración para desarrollo vs producción
     if os.environ.get('FLASK_ENV') == 'production':
-        # Configuración para Render (producción) - permitir Werkzeug temporalmente
+        # Configuración para Render (producción) - optimizada para plan básico
         port = int(os.environ.get('PORT', 5000))
         socketio.run(app, host='0.0.0.0', port=port, debug=False, allow_unsafe_werkzeug=True)
     else:
