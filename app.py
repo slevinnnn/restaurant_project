@@ -858,10 +858,10 @@ def liberar_mesa(mesa_id):
         # Notificar clientes asignados después del commit exitoso
         for mesa_id_asignada, cliente_asignado in mesas_asignadas:
             if cliente_asignado.sid:
-                socketio.emit("es_tu_turno", {
+                emit_to_specific_client("es_tu_turno", {
                     "mesa": mesa_id_asignada,
                     "asignada_at": cliente_asignado.mesa_asignada_at.isoformat() if cliente_asignado.mesa_asignada_at else None
-                }, to=cliente_asignado.sid)
+                }, cliente_asignado.id)
             
             # 🔔 ENVIAR NOTIFICACIÓN PUSH REAL
             notificar_turno_listo(cliente_asignado.id, mesa_id_asignada)
@@ -947,14 +947,13 @@ def asignar_cliente_a_mesas():
         
     # Mantener la sesión del cliente; no limpiar para soportar recargas sin duplicados
         
-        # Notificar al cliente
-        if cliente.sid:
-            mesas_asignadas = [m.id for m in mesas]
-            socketio.emit("es_tu_turno", {
-                "mesa": mesa_principal.id,
-                "mesas_adicionales": mesas_asignadas[1:] if len(mesas_asignadas) > 1 else [],
-                "asignada_at": cliente.mesa_asignada_at.isoformat() if cliente.mesa_asignada_at else None
-            }, to=cliente.sid)
+        # Notificar al cliente con función optimizada
+        mesas_asignadas = [m.id for m in mesas]
+        emit_to_specific_client("es_tu_turno", {
+            "mesa": mesa_principal.id,
+            "mesas_adicionales": mesas_asignadas[1:] if len(mesas_asignadas) > 1 else [],
+            "asignada_at": cliente.mesa_asignada_at.isoformat() if cliente.mesa_asignada_at else None
+        }, cliente.id)
         
         # 🔔 ENVIAR NOTIFICACIÓN PUSH REAL
         notificar_turno_listo(cliente.id, mesa_principal.id)
@@ -1059,11 +1058,11 @@ def asignar_cliente_multiple(cliente_id):
         # Notificar al cliente después del commit exitoso
         if cliente.sid:
             mesas_asignadas = [m.id for m in mesas_reservadas]
-            socketio.emit("es_tu_turno", {
+            emit_to_specific_client("es_tu_turno", {
                 "mesa": mesa_principal.id,
                 "mesas_adicionales": mesas_asignadas[1:] if len(mesas_asignadas) > 1 else [],
                 "asignada_at": cliente.mesa_asignada_at.isoformat() if cliente.mesa_asignada_at else None
-            }, to=cliente.sid)
+            }, cliente.id)
         
         # 🔔 ENVIAR NOTIFICACIÓN PUSH REAL
         notificar_turno_listo(cliente.id, mesa_principal.id)

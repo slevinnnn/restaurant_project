@@ -193,22 +193,61 @@ self.addEventListener('message', (event) => {
   
   const { type, data } = event.data || {};
   
-  if (type === 'SHOW_NOTIFICATION') {
-    // 🔔 Mostrar notificación solicitada por la app principal
+  if (type === 'SHOW_NOTIFICATION_TURNO') {
+    // 🎉 NOTIFICACIÓN ESPECIAL DE TURNO - MÁXIMA VIBRACIÓN
+    console.log('🎉 === NOTIFICACIÓN DE TURNO EN SERVICE WORKER ===');
+    console.log('📱 Mesa:', event.data.mesa);
+    console.log('📳 Vibration pattern:', event.data.vibrate);
+    
     const options = {
-      body: data.body || 'Notificación del restaurante',
+      body: event.data.body || `Tu mesa ${event.data.mesa} está lista`,
       icon: '/static/images/logo-alleria.png',
       badge: '/static/images/logo-alleria.png',
-      vibrate: data.vibrate || [300, 200, 300],
-      tag: data.tag || 'app-notification',
-      requireInteraction: data.requireInteraction || false,
-      data: data
+      vibrate: event.data.vibrate || [1000, 300, 1000, 300, 1000], // Vibración súper fuerte
+      tag: event.data.tag || 'turno-mesa',
+      requireInteraction: true, // SIEMPRE requerir interacción para turnos
+      renotify: true,
+      silent: false,
+      timestamp: event.data.timestamp || Date.now(),
+      data: {
+        mesa: event.data.mesa,
+        type: 'turno',
+        timestamp: Date.now()
+      },
+      actions: [
+        {
+          action: 'view',
+          title: '👀 Ver Mesa',
+          icon: '/static/images/icono-de-la-mesa-redonda.webp'
+        }
+      ]
     };
     
-    self.registration.showNotification(data.title || '🍽️ Restaurante', options)
+    self.registration.showNotification(event.data.title || '🎉 ¡ES TU TURNO!', options)
+      .then(() => {
+        console.log('✅ NOTIFICACIÓN DE TURNO MOSTRADA CON VIBRACIÓN MÁXIMA');
+        event.ports[0]?.postMessage({ success: true, type: 'turno' });
+      })
+      .catch(error => {
+        console.error('❌ Error mostrando notificación de turno:', error);
+        event.ports[0]?.postMessage({ success: false, error: error.message });
+      });
+      
+  } else if (type === 'SHOW_NOTIFICATION') {
+    // 🔔 Mostrar notificación solicitada por la app principal
+    const options = {
+      body: event.data.body || 'Notificación del restaurante',
+      icon: '/static/images/logo-alleria.png',
+      badge: '/static/images/logo-alleria.png',
+      vibrate: event.data.vibrate || [300, 200, 300],
+      tag: event.data.tag || 'app-notification',
+      requireInteraction: event.data.requireInteraction || false,
+      data: event.data
+    };
+    
+    self.registration.showNotification(event.data.title || '🍽️ Restaurante', options)
       .then(() => {
         console.log('✅ Notificación desde mensaje mostrada');
-        // Responder al cliente que la notificación se mostró
         event.ports[0]?.postMessage({ success: true });
       })
       .catch(error => {

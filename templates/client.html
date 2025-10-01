@@ -741,73 +741,96 @@
       }
     }
 
-    // Mostrar notificación cuando sea el turno
-    function mostrarNotificacionTurno(mesa) {
-      console.log('🔔 === INICIO NOTIFICACIÓN TURNO ===');
+    // 🚀 SISTEMA INTEGRADO DE NOTIFICACIONES (Socket.IO + Push + Service Worker + Visual)
+    function mostrarNotificacionesIntegradas(mesa) {
+      console.log('🔔 === SISTEMA INTEGRADO DE NOTIFICACIONES INICIADO ===');
       console.log('📱 Mesa asignada:', mesa);
       console.log('🔔 Permission:', Notification.permission);
       console.log('👁️ Visibility:', document.visibilityState);
       console.log('🌐 Online:', navigator.onLine);
+      console.log('📳 Vibration API:', 'vibrate' in navigator);
+      console.log('🔧 Service Worker:', 'serviceWorker' in navigator);
       
-      // Método 1: Notificación web estándar
+      // === MÉTODO 1: PUSH NOTIFICATION REAL (LA MÁS IMPORTANTE PARA VIBRACIÓN) ===
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        try {
+          console.log('🔔 Enviando push notification vía Service Worker...');
+          navigator.serviceWorker.controller.postMessage({
+            type: 'SHOW_NOTIFICATION_TURNO',
+            title: '🎉 ¡ES TU TURNO!',
+            body: `Tu mesa ${mesa} está lista. Tienes 5 minutos para llegar.`,
+            mesa: mesa,
+            vibrate: [800, 200, 800, 200, 800, 200, 800], // Vibración más fuerte
+            requireInteraction: true,
+            tag: 'turno-mesa-' + mesa,
+            icon: '/static/images/logo-alleria.png',
+            badge: '/static/images/logo-alleria.png',
+            timestamp: Date.now()
+          });
+          console.log('✅ Push notification enviada al Service Worker');
+        } catch (error) {
+          console.error('❌ Error enviando push notification:', error);
+        }
+      } else {
+        console.log('⚠️ Service Worker no disponible para push notifications');
+      }
+      
+      // === MÉTODO 2: NOTIFICACIÓN WEB ESTÁNDAR (BACKUP) ===
       if (Notification.permission === 'granted') {
         try {
-          const notificacion = new Notification('🎉 ¡Es tu turno!', {
+          console.log('🔔 Creando notificación web estándar...');
+          const notificacion = new Notification('🎉 ¡ES TU TURNO!', {
             body: `Tu mesa ${mesa} está lista. Tienes 5 minutos para llegar.`,
             icon: '/static/images/logo-alleria.png',
             badge: '/static/images/logo-alleria.png',
-            vibrate: [500, 200, 500, 200, 500, 200, 500], // Vibración más intensa y larga
-            requireInteraction: true, // Mantiene la notificación hasta que el usuario interactúe
-            tag: 'turno-mesa', // Evita notificaciones duplicadas
+            vibrate: [800, 200, 800, 200, 800, 200, 800], // Vibración más fuerte
+            requireInteraction: true,
+            tag: 'turno-mesa-' + mesa,
             renotify: true,
-            silent: false, // Asegurar que no sea silenciosa
-            data: { mesa: mesa, timestamp: Date.now() }
+            silent: false,
+            data: { mesa: mesa, timestamp: Date.now(), type: 'turno' }
           });
 
-          // Cerrar automáticamente después de 60 segundos
-          setTimeout(() => {
-            notificacion.close();
-          }, 60000);
-
-          // Manejar clic en la notificación
           notificacion.onclick = function() {
             window.focus();
             notificacion.close();
           };
           
-          console.log('✅ Notificación web creada exitosamente');
+          // Auto-cerrar después de 2 minutos
+          setTimeout(() => notificacion.close(), 120000);
+          
+          console.log('✅ Notificación web estándar creada');
         } catch (error) {
           console.error('❌ Error creando notificación web:', error);
         }
       } else {
-        console.log('❌ Permisos de notificación no concedidos');
+        console.log('⚠️ Permisos de notificación no concedidos');
       }
       
-      // Método 2: Service Worker (para notificaciones en segundo plano)
-      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      // === MÉTODO 3: VIBRACIÓN DIRECTA (INMEDIATA) ===
+      if (navigator.vibrate) {
         try {
-          navigator.serviceWorker.controller.postMessage({
-            type: 'SHOW_NOTIFICATION',
-            title: '🎉 ¡Es tu turno!',
-            body: `Tu mesa ${mesa} está lista. Tienes 5 minutos para llegar.`,
-            mesa: mesa
-          });
-          console.log('✅ Mensaje enviado al Service Worker');
+          console.log('📳 Activando vibración directa...');
+          // Vibración más intensa y larga para turno
+          navigator.vibrate([1000, 300, 1000, 300, 1000, 300, 1000]);
+          console.log('✅ Vibración directa activada');
         } catch (error) {
-          console.error('❌ Error enviando mensaje al SW:', error);
+          console.error('❌ Error con vibración:', error);
         }
       }
       
-      // Método 3: Alerta visual en la página (siempre funciona)
+      // === MÉTODO 4: ALERTAS VISUALES EN PANTALLA ===
       mostrarAlertaVisual(mesa);
-      
-      // Método 4: Intentar despertar la página con vibración y sonido
       intentarDespertarDispositivo();
-      
-      // Método 5: Crear alerta visual superpuesta
       crearAlertaSuperpuesta(mesa);
       
-      console.log('🔔 === FIN NOTIFICACIÓN TURNO ===');
+      console.log('🔔 === SISTEMA INTEGRADO COMPLETADO ===');
+    }
+
+    // Función anterior para compatibilidad (llama a la nueva)
+    function mostrarNotificacionTurno(mesa) {
+      console.log('⚠️ Función anterior llamada, redirigiendo al sistema integrado...');
+      mostrarNotificacionesIntegradas(mesa);
     }
     
     // Nueva función: Alerta visual que siempre funciona
@@ -1650,9 +1673,9 @@
   // Agregar clase para indicar que tiene mesa
         document.body.classList.add('tiene-mesa');
         
-        // Mostrar notificación push con debugging
-        console.log('🔔 Iniciando proceso de notificación...');
-        mostrarNotificacionTurno(data.mesa);
+        // Mostrar notificaciones combinadas (Socket.IO + Push + Service Worker)
+        console.log('🔔 === INICIANDO SISTEMA INTEGRADO DE NOTIFICACIONES ===');
+        mostrarNotificacionesIntegradas(data.mesa);
         
         // Iniciar cronómetro con timestamp de asignación
         console.log('⏰ Iniciando proceso de cronómetro...');
